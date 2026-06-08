@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Shuriken Prototype</title>
+<style>
+  :root { --bg:#1a1d24; --panel:#fff; --ink:#2b2f38; --muted:#6b7280; --blue:#4c8dff; --line:#e3e6ec; }
+  * { box-sizing: border-box; }
+  html, body { margin:0; padding:0; height:100%; background:var(--bg);
+    font-family:-apple-system,"Segoe UI",Roboto,sans-serif; color:var(--ink); }
+  #app { height:100%; display:flex; flex-direction:column; }
+
+  /* ===== Topbar + tabs ===== */
+  #topbar { flex:0 0 auto; height:52px; display:flex; align-items:center; justify-content:space-between;
+    padding:0 16px; background:#22262f; color:#fff; }
+  #topbar .brand { font-weight:700; letter-spacing:.3px; }
+  .tabs { display:flex; gap:8px; }
+  .tab { background:#2f3440; color:#cfd5e0; border:none; padding:8px 16px; border-radius:10px;
+    font-size:14px; font-weight:600; cursor:pointer; }
+  .tab.active { background:var(--blue); color:#fff; }
+
+  /* ===== Play screen ===== */
+  #playScreen { flex:1 1 auto; display:flex; flex-direction:column; align-items:center; min-height:0; }
+  #playBar { flex:0 0 auto; display:flex; gap:10px; padding:10px; }
+  #playBar button { border:none; border-radius:10px; padding:8px 14px; font-size:14px; font-weight:600;
+    cursor:pointer; background:#2f3440; color:#cfd5e0; }
+  #autoToggle.on { background:#ffb84d; color:#3a2a00; }
+  #wrap { flex:1 1 auto; display:flex; align-items:center; justify-content:center; min-height:0; }
+  #game { background:#f7f8fa; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,.5);
+    cursor:crosshair; touch-action:none; }
+
+  /* ===== Edit screen ===== */
+  #editScreen { flex:1 1 auto; overflow-y:auto; padding:18px; display:none; }
+  .card-block { max-width:860px; margin:0 auto 18px; background:var(--panel); border-radius:14px; padding:18px 20px; }
+  .card-block h2 { margin:0 0 4px; font-size:20px; }
+  .card-block h3 { margin:16px 0 6px; font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
+  .row-head { display:flex; align-items:center; justify-content:space-between; }
+  .hint { color:var(--muted); font-size:13px; margin:4px 0 10px; }
+  .sub { font-size:13px; font-weight:600; color:var(--muted); margin:12px 0 6px; }
+
+  .grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr)); gap:10px; }
+  .field { display:flex; flex-direction:column; gap:3px; font-size:12px; color:var(--muted); }
+  .field span { font-weight:600; }
+  input.num, input.txt, select.sel, textarea.json {
+    border:1px solid var(--line); border-radius:8px; padding:7px 9px; font-size:14px; color:var(--ink);
+    background:#fbfcfe; font-family:inherit; }
+  input.num { width:100%; }
+  textarea.json { width:100%; resize:vertical; }
+
+  .edit-card { border:1px solid var(--line); border-radius:12px; padding:14px; margin-top:12px; background:#fcfdff; }
+  .eff-row { display:flex; flex-wrap:wrap; align-items:flex-end; gap:8px; margin:6px 0;
+    padding:8px; background:#f2f5fb; border-radius:8px; }
+  .eff-row .field { min-width:120px; }
+
+  .btn-row { display:flex; gap:8px; flex-wrap:wrap; margin-top:10px; }
+  .mini { border:none; border-radius:8px; padding:7px 12px; font-size:13px; font-weight:600;
+    cursor:pointer; background:var(--blue); color:#fff; }
+  .mini.danger { background:#ff5277; }
+  .mini.sm { padding:6px 9px; }
+
+  .chk-box { display:flex; flex-wrap:wrap; gap:6px; }
+  .chk { display:inline-flex; align-items:center; gap:6px; font-size:13px; padding:6px 10px;
+    border:1px solid var(--line); border-radius:20px; cursor:pointer; background:#fff; }
+  .chk.on { border-color:var(--blue); background:#eef4ff; color:var(--blue); font-weight:600; }
+  .chk input { margin:0; }
+
+  .etable { width:100%; border-collapse:collapse; margin-top:8px; }
+  .etable th, .etable td { border:1px solid var(--line); padding:6px 8px; font-size:13px; text-align:center; }
+  .etable th { background:#f2f5fb; color:var(--muted); }
+  .etable td input.num { text-align:center; }
+
+  /* ===== Overlays (set / upgrade / game over) ===== */
+  .overlay { position:fixed; inset:0; display:none; align-items:center; justify-content:center;
+    background:rgba(20,22,28,.78); backdrop-filter:blur(3px); z-index:50; }
+  .overlay.show { display:flex; }
+  .panel { width:min(86vw,460px); background:#fff; border-radius:18px; padding:26px 22px; text-align:center;
+    box-shadow:0 12px 50px rgba(0,0,0,.4); max-height:86vh; overflow-y:auto; }
+  .panel h1 { font-size:24px; margin:0 0 6px; }
+  .panel p { font-size:15px; color:#5b6270; margin:0 0 18px; }
+  .cards { display:flex; flex-direction:column; gap:12px; }
+  .card { border:2px solid var(--line); border-radius:14px; padding:16px 18px; text-align:left;
+    cursor:pointer; transition:all .15s ease; background:#fbfcfe; }
+  .card:hover { border-color:var(--blue); background:#f0f6ff; transform:translateY(-2px); }
+  .card .ico { font-size:24px; }
+  .card .name { font-size:18px; font-weight:700; margin:4px 0 2px; }
+  .card .desc { font-size:14px; color:var(--muted); line-height:1.35; }
+  .card .lvl { font-size:12px; color:var(--blue); font-weight:700; margin-top:6px; }
+  .btn { margin-top:8px; background:var(--blue); color:#fff; border:none; font-size:18px; font-weight:700;
+    padding:14px 28px; border-radius:12px; cursor:pointer; }
+</style>
+</head>
+<body>
+<div id="app">
+  <nav id="topbar">
+    <div class="brand">🌀 Shuriken Prototype</div>
+    <div class="tabs">
+      <button id="tabPlay" class="tab">▶ Play</button>
+      <button id="tabEdit" class="tab">✎ Edit + Balance</button>
+    </div>
+  </nav>
+
+  <!-- ============ PLAY SCREEN ============ -->
+  <div id="playScreen">
+    <div id="playBar">
+      <button id="autoToggle"></button>
+      <button id="replayBtn">↻ Chơi lại</button>
+    </div>
+    <div id="wrap"><canvas id="game"></canvas></div>
+  </div>
+
+  <!-- ============ EDIT SCREEN ============ -->
+  <div id="editScreen"><div id="editRoot"></div></div>
+</div>
+
+<!-- ============ OVERLAYS ============ -->
+<!-- Bước 1: chọn SET -->
+<div class="overlay" id="setOverlay">
+  <div class="panel">
+    <h1>Chọn nhánh nâng cấp</h1>
+    <p>Chọn 1 nhánh, sau đó chọn 1 nâng cấp.</p>
+    <div class="cards" id="setCards"></div>
+  </div>
+</div>
+<!-- Bước 2: chọn UPGRADE trong set -->
+<div class="overlay" id="upgradeOverlay">
+  <div class="panel">
+    <h1>Chọn nâng cấp</h1>
+    <div class="cards" id="upgradeCards"></div>
+  </div>
+</div>
+<!-- Thua -->
+<div class="overlay" id="gameoverOverlay">
+  <div class="panel">
+    <h1>Thua rồi!</h1>
+    <p id="gameoverStats"></p>
+    <button class="btn" id="restartBtn">Chơi lại</button>
+  </div>
+</div>
+
+<!-- ============================================================
+     Thứ tự nạp QUAN TRỌNG:
+       1) config.js  -> dữ liệu mặc định + schema
+       2) data.js    -> Store (lưu/tải), diễn giải hiệu ứng, helper scaling
+       3) game.js    -> engine màn Play (auto-play, set→upgrade)
+       4) editor.js  -> màn Edit + điều hướng tab (nạp cuối cùng)
+     ============================================================ -->
+<script src="config.js"></script>
+<script src="data.js"></script>
+<script src="game.js"></script>
+<script src="editor.js"></script>
+</body>
+</html>
