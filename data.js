@@ -17,6 +17,7 @@ const Store = {
   balance:  clone(DEFAULT_BALANCE),
   upgrades: clone(DEFAULT_UPGRADES),
   sets:     clone(DEFAULT_SETS),
+  activeSetId: DEFAULT_SETS[0].id,   // set dùng cho level (chọn trong màn Edit)
 
   // Nạp từ localStorage (nếu có), không thì giữ mặc định
   load() {
@@ -24,9 +25,10 @@ const Store = {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const d = JSON.parse(raw);
-        if (d.balance)  this.balance  = d.balance;
-        if (d.upgrades) this.upgrades = d.upgrades;
-        if (d.sets)     this.sets     = d.sets;
+        if (d.balance)     this.balance  = d.balance;
+        if (d.upgrades)    this.upgrades = d.upgrades;
+        if (d.sets)        this.sets     = d.sets;
+        if (d.activeSetId) this.activeSetId = d.activeSetId;
       }
     } catch (e) { /* localStorage có thể bị chặn khi mở file:// — bỏ qua, dùng mặc định */ }
   },
@@ -35,14 +37,14 @@ const Store = {
   save() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        balance: this.balance, upgrades: this.upgrades, sets: this.sets,
+        balance: this.balance, upgrades: this.upgrades, sets: this.sets, activeSetId: this.activeSetId,
       }));
     } catch (e) { /* bỏ qua nếu bị chặn */ }
   },
 
   // Xuất JSON (để sao lưu / chia sẻ config)
   exportJSON() {
-    return JSON.stringify({ balance: this.balance, upgrades: this.upgrades, sets: this.sets }, null, 2);
+    return JSON.stringify({ balance: this.balance, upgrades: this.upgrades, sets: this.sets, activeSetId: this.activeSetId }, null, 2);
   },
 
   // Nhập JSON; trả về true nếu hợp lệ
@@ -51,6 +53,7 @@ const Store = {
       const d = JSON.parse(text);
       if (!d.balance || !d.upgrades || !d.sets) return false;
       this.balance = d.balance; this.upgrades = d.upgrades; this.sets = d.sets;
+      if (d.activeSetId) this.activeSetId = d.activeSetId;
       this.save();
       return true;
     } catch (e) { return false; }
@@ -61,11 +64,15 @@ const Store = {
     this.balance  = clone(DEFAULT_BALANCE);
     this.upgrades = clone(DEFAULT_UPGRADES);
     this.sets     = clone(DEFAULT_SETS);
+    this.activeSetId = DEFAULT_SETS[0].id;
     this.save();
   },
 
   // Tìm upgrade theo id
   getUpgrade(id) { return this.upgrades.find(u => u.id === id); },
+
+  // Set đang dùng cho level (fallback set đầu tiên nếu id không còn)
+  getActiveSet() { return this.sets.find(s => s.id === this.activeSetId) || this.sets[0] || null; },
 };
 Store.load();
 

@@ -48,7 +48,11 @@
   input.num { width:100%; }
   textarea.json { width:100%; resize:vertical; }
 
+  .active-set { display:flex; align-items:center; gap:8px; margin:10px 0; font-weight:600; }
   .edit-card { border:1px solid var(--line); border-radius:12px; padding:14px; margin-top:12px; background:#fcfdff; }
+  .edit-card.active { border-color:var(--blue); box-shadow:0 0 0 2px rgba(76,141,255,.18); }
+  .active-badge { display:inline-block; background:var(--blue); color:#fff; font-size:12px; font-weight:700;
+    padding:3px 10px; border-radius:20px; margin-bottom:8px; }
   .eff-row { display:flex; flex-wrap:wrap; align-items:flex-end; gap:8px; margin:6px 0;
     padding:8px; background:#f2f5fb; border-radius:8px; }
   .eff-row .field { min-width:120px; }
@@ -114,15 +118,7 @@
 </div>
 
 <!-- ============ OVERLAYS ============ -->
-<!-- Bước 1: chọn SET -->
-<div class="overlay" id="setOverlay">
-  <div class="panel">
-    <h1>Chọn nhánh nâng cấp</h1>
-    <p>Chọn 1 nhánh, sau đó chọn 1 nâng cấp.</p>
-    <div class="cards" id="setCards"></div>
-  </div>
-</div>
-<!-- Bước 2: chọn UPGRADE trong set -->
+<!-- Chọn UPGRADE (set của level đã đặt sẵn trong màn Edit) -->
 <div class="overlay" id="upgradeOverlay">
   <div class="panel">
     <h1>Chọn nâng cấp</h1>

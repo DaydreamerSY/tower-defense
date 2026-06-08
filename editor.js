@@ -69,8 +69,7 @@ function sectionBalance() {
   sec.appendChild(el('h3', {}, 'Người chơi (chỉ số khởi đầu)'));
   const pg = el('div', { class: 'grid' });
   [['fireCooldown','Hồi chiêu (s)',0.01],['bulletSpeed','Tốc độ đạn',10],['bulletDamage','Sát thương',1],
-   ['bulletBounces','Số lần nảy',1],['bulletCount','Số viên/nhịp',1],['bulletSpread','Góc xòe (độ)',1],
-   ['bulletLifetime','TG sống đạn (s)',0.1],['bulletPierce','Xuyên',1]]
+   ['bulletCount','Số viên/nhịp',1],['bulletSpread','Góc xòe (độ)',1],['bulletPierce','Xuyên',1]]
     .forEach(([k,l,s]) => pg.appendChild(labeled(l, numField(p, k, s))));
   sec.appendChild(pg);
 
@@ -216,13 +215,21 @@ function sectionSets() {
       el('h2', {}, '📦 Sets (nhánh nâng cấp)'),
       el('button', { class: 'mini', onclick: addSet }, '+ Thêm set'),
     ]),
-    el('p', { class: 'hint' }, 'Khi lên cấp, player chọn 1 set rồi chọn 1 upgrade trong số "Số lựa chọn" của set đó.'),
+    el('p', { class: 'hint' }, 'Chọn 1 set dùng cho level bên dưới. Khi chơi, mỗi lần đủ điểm lên cấp, game random "Số lựa chọn" upgrade trong set đó để player chọn 1.'),
   ]);
+
+  // Chọn SET dùng cho level (thay cho việc chọn lúc chơi)
+  const activeSel = el('select', { class: 'sel', onchange: (e) => { Store.activeSetId = e.target.value; Store.save(); renderEditor(); } });
+  Store.sets.forEach(s => activeSel.appendChild(el('option', { value:s.id, ...(Store.activeSetId===s.id?{selected:'selected'}:{}) }, `${s.ico||'📦'} ${s.name}`)));
+  sec.appendChild(el('div', { class: 'active-set' }, [ el('span', {}, '▶ Set dùng cho level: '), activeSel ]));
+
   Store.sets.forEach(s => sec.appendChild(setCard(s)));
   return sec;
 }
 function setCard(s) {
-  const card = el('div', { class: 'edit-card' });
+  const isActive = (s.id === Store.activeSetId);
+  const card = el('div', { class: 'edit-card' + (isActive ? ' active' : '') });
+  if (isActive) card.appendChild(el('div', { class: 'active-badge' }, '▶ Đang dùng cho level'));
   card.appendChild(el('div', { class: 'grid' }, [
     labeled('ID', txtField(s, 'id')),
     labeled('Tên', txtField(s, 'name')),

@@ -25,11 +25,11 @@ const DEFAULT_BALANCE = {
     fireCooldown: 0.35,   // giây giữa 2 phát bắn (nhỏ hơn = bắn nhanh hơn)
     bulletSpeed: 480,     // px/giây
     bulletDamage: 1,      // dmg mỗi viên
-    bulletBounces: 2,     // số lần nảy tối đa mỗi viên
     bulletCount: 1,       // số viên bắn mỗi nhịp
     bulletSpread: 0,      // góc xòe (độ) khi bắn nhiều viên
-    bulletLifetime: 2.5,  // giây trước khi viên đạn tự biến mất
-    bulletPierce: 0,      // số enemy đạn xuyên qua (0 = không xuyên, sẽ nảy)
+    bulletPierce: 0,      // số enemy đạn xuyên qua (0 = không xuyên, sẽ nảy vô hạn)
+    // Ghi chú: đạn nảy VÔ HẠN khi trúng enemy, chỉ biến mất khi chạm tường,
+    // nên không còn 'số lần nảy' hay 'thời gian sống đạn'.
   },
 
   // Các loại enemy (shape phải là 'triangle' | 'circle' | 'square')
@@ -70,8 +70,8 @@ const DEFAULT_BALANCE = {
    Mỗi phần tử trong effects có 1 trong 2 dạng:
    (A) Chỉnh chỉ số:
        { kind:'stat', target:'<tên chỉ số>', op:'add'|'mul'|'set', value:<số> }
-       target hợp lệ: fireCooldown, bulletSpeed, bulletDamage, bulletBounces,
-                      bulletCount, bulletSpread, bulletLifetime, bulletPierce
+       target hợp lệ: fireCooldown, bulletSpeed, bulletDamage,
+                      bulletCount, bulletSpread, bulletPierce
    (B) Hiệu ứng đặc biệt:
        { kind:'fx', fx:'slow', factor:0.65, duration:2.0 }   // làm chậm
        { kind:'fx', fx:'burn', dps:1, duration:3.0 }         // bỏng (dps cộng dồn)
@@ -88,10 +88,7 @@ const DEFAULT_UPGRADES = [
     effects:[ { kind:'stat', target:'bulletCount', op:'add', value:1 },
               { kind:'stat', target:'bulletSpread', op:'set', value:14 } ] },
 
-  { id:'bounce',    name:'Nảy thêm',      ico:'🔄', desc:'+1 lần nảy.', maxLevel:6,
-    effects:[ { kind:'stat', target:'bulletBounces', op:'add', value:1 } ] },
-
-  { id:'pierce',    name:'Xuyên thấu',    ico:'➡️', desc:'+1 lần xuyên enemy.', maxLevel:4,
+  { id:'pierce',    name:'Xuyên thấu',    ico:'➡️', desc:'+1 lần xuyên enemy (đi thẳng thay vì nảy).', maxLevel:4,
     effects:[ { kind:'stat', target:'bulletPierce', op:'add', value:1 } ] },
 
   { id:'spread',    name:'Nhiều hướng',   ico:'✳️', desc:'+18° góc xòe.', maxLevel:4,
@@ -129,10 +126,10 @@ const DEFAULT_SETS = [
     upgradeIds:['damage','multishot','firerate','bulletspeed'] },
 
   { id:'control', name:'Khống chế', ico:'🧊', choices:3,
-    upgradeIds:['slow','burn','aoe','bounce'] },
+    upgradeIds:['slow','burn','aoe','pierce'] },
 
   { id:'utility', name:'Hỗ trợ', ico:'✨', choices:3,
-    upgradeIds:['bounce','pierce','spread','bulletspeed'] },
+    upgradeIds:['pierce','spread','bulletspeed','firerate'] },
 ];
 
 
@@ -143,10 +140,8 @@ const STAT_DEFS = [
   { key:'fireCooldown',  label:'Hồi chiêu (s)' },
   { key:'bulletSpeed',   label:'Tốc độ đạn' },
   { key:'bulletDamage',  label:'Sát thương' },
-  { key:'bulletBounces', label:'Số lần nảy' },
   { key:'bulletCount',   label:'Số viên/nhịp' },
   { key:'bulletSpread',  label:'Góc xòe (độ)' },
-  { key:'bulletLifetime',label:'TG sống đạn (s)' },
   { key:'bulletPierce',  label:'Xuyên' },
 ];
 const OP_DEFS = [
