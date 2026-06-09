@@ -23,6 +23,7 @@ function freshPlayerStats() {
 function initState() {
   state = {
     running: true, paused: false,
+    dying: false, deathTimer: 0,   // bị chạm -> hiện "!" + đóng băng 3s rồi mới game over
     elapsed: 0, kills: 0,
     level: 1, exp: 0, expToNext: expForLevel(1),
     levelUps: 0,           // tổng số lần đã lên cấp

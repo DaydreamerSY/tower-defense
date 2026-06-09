@@ -110,7 +110,9 @@ function makeMinibossStats(typeKey, elapsed) {
     hp:    Math.round(t.baseHp * hpMul),
     speed: t.baseSpeed * spMul * globalSpeed,
     isBoss: true, absorb: !!t.absorb, bellyMax: t.bellyMax || 7,
-    insulate: t.insulate, nodes: t.nodes, tipCount: t.tipCount,   // Tesla: kháng phi-điện / sét arc quanh cánh sao
+    insulate: t.insulate, nodes: t.nodes, tipCount: t.tipCount,   // Tesla
+    mudWeak: t.mudWeak,                                           // Golem: ăn thêm dmg trong bùn
+    deflect: t.deflect, pierceBonus: t.pierceBonus,               // Cyclone: thổi chệch / xuyên full
   };
 }
 

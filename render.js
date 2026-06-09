@@ -19,6 +19,14 @@ function drawEnemy(e) {
     for (let i = 0; i < 6; i++) { const a = Math.PI/6 + i*Math.PI/3, px = Math.cos(a)*r, py = Math.sin(a)*r; i ? ctx.lineTo(px,py) : ctx.moveTo(px,py); }
     ctx.closePath(); ctx.fill(); ctx.stroke();
   }
+  else if (e.shape === 'octagon') {
+    ctx.beginPath();
+    for (let i = 0; i < 8; i++) { const a = Math.PI/8 + i*Math.PI/4, px = Math.cos(a)*r, py = Math.sin(a)*r; i ? ctx.lineTo(px,py) : ctx.moveTo(px,py); }
+    ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
+  else if (e.shape === 'diamond') {
+    ctx.beginPath(); ctx.moveTo(0,-r); ctx.lineTo(r,0); ctx.lineTo(0,r); ctx.lineTo(-r,0); ctx.closePath(); ctx.fill(); ctx.stroke();
+  }
   else if (e.shape === 'star') {
     const spikes = 5, inner = r * 0.45;
     ctx.beginPath();
@@ -161,6 +169,18 @@ function render() {
   ctx.beginPath(); ctx.moveTo(state.player.x, state.player.y);
   ctx.lineTo(state.player.x + Math.cos(aim)*state.player.radius, state.player.y + Math.sin(aim)*state.player.radius);
   ctx.lineWidth = 4; ctx.stroke();
+
+  // Bị chạm: dấu "!" đỏ + viền nhấp nháy trên nhân vật (chưa hiện pop-up)
+  if (state.dying) {
+    const px = state.player.x, py = state.player.y;
+    ctx.strokeStyle = '#ff2d2d'; ctx.lineWidth = 4;
+    ctx.globalAlpha = 0.55 + 0.45 * Math.abs(Math.sin(state.deathTimer * 10));
+    ctx.beginPath(); ctx.arc(px, py, state.player.radius + 6, 0, Math.PI*2); ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#ff2d2d'; ctx.font = 'bold 56px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('!', px, py - state.player.radius - 14);
+    ctx.textAlign = 'left';
+  }
 
   drawHUD();
 }

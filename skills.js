@@ -93,7 +93,7 @@ function describeSkill(s, level) {
     case 'wind1':  return `${pct('chance')} viên hóa đạn gió, xuyên thêm ${hl('pierce', L.pierce)} kẻ thù.`;
     case 'wind2':  return `Mỗi ${hl('every', L.every)} phát bắn tạo luồng gió đẩy kẻ thù trong bán kính ${hl('r', L.r)}.`;
     case 'earth1': return `${pct('chance')} viên hóa đạn đất: vũng bùn r=${hl('r', L.r)}, chậm còn ${hl('slowFactor', Math.round(L.slowFactor*100) + '%')} tốc độ trong ${hl('duration', L.duration + 's')}.`;
-    case 'earth2': return `Đẩy lùi kẻ thù ${hl('knockback', L.knockback)}px khi trúng (tốc độ bay −20%).`;
+    case 'earth2': return `Đẩy lùi kẻ thù ${hl('knockback', L.knockback)}px khi trúng (tốc độ bay ${hl('speedMul', '−' + Math.round((1 - L.speedMul) * 100) + '%')}).`;
     case 'spd':    return `Tốc độ đạn ×${hl('mul', L.mul.toFixed(2))}.`;
     case 'crit':   return `${pct('chance')} gây gấp đôi sát thương gốc.`;
     case 'split':  return `${pct('chance')} khi trúng, viên đạn tách làm đôi.`;
@@ -107,7 +107,7 @@ function describeSkill(s, level) {
     case 'ebounce':return `Mỗi lần đạn nảy +${hl('dmg', L.dmg)} sát thương cho viên đó.`;
     case 'elbounce':return `Mỗi lần đạn nảy phóng sét lan ${hl('chain', L.chain)} kẻ thù (${hl('dmg', L.dmg)} dmg).`;
     case 'ftrail': return `Mỗi lần đạn nảy để lại vệt lửa dài ${hl('len', L.len)} (dày ${hl('r', L.r)}), ${hl('dps', L.dps)} dmg/giây trong ${hl('duration', L.duration + 's')}.`;
-    case 'wgust':  return `Mỗi lần đạn nảy đẩy kẻ thù trong bán kính ${hl('r', L.r)} ra xa.`;
+    case 'wgust':  return `Mỗi lần đạn nảy đẩy kẻ thù trong bán kính ${hl('r', L.r)} ra xa ${hl('push', L.push)}px.`;
     case 'wall':   return `Mỗi ${hl('cooldown', L.cooldown + 's')} tạo ${hl('count', L.count)} bức tường (tồn tại ${hl('duration', L.duration + 's')}): đạn nảy thêm + chặn kẻ thù.`;
     default:       return s.desc;
   }

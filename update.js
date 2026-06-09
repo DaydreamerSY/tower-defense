@@ -3,10 +3,17 @@
    ----------------------------------------------------------------------------
    Phụ thuộc: state.js, combat.js (fire/reflect/damageEnemy/bulletHit/
    onEnemyKilled), spawn.js (spawnEnemy), levelup.js (offerLevelUp),
-   lifecycle.js (gameOver), data.js (currentSpawnInterval, expForLevel).
+   lifecycle.js (triggerDeath/showGameOver), data.js (currentSpawnInterval, expForLevel).
    ============================================================================ */
 
 function update(dt) {
+  // Đang chết: đóng băng cảnh, đếm ngược 3s rồi mới hiện pop-up thua
+  if (state.dying) {
+    state.deathTimer -= dt;
+    if (state.deathTimer <= 0) showGameOver();
+    return;
+  }
+
   state.elapsed += dt;
 
   updateAim(); // hướng ngắm (auto-play mô phỏng đường đạn / hoặc theo chuột)
@@ -130,9 +137,9 @@ function update(dt) {
 
   // Enemy di chuyển + bùn làm chậm + bỏng cộng dồn
   for (const e of state.enemies) {
-    let spd = e.speed;
+    let spd = e.speed, inMud = false;
     for (const p of state.puddles) {
-      if (Math.hypot(e.x - p.x, e.y - p.y) <= p.r) spd = Math.min(spd, e.speed * p.slowFactor);
+      if (Math.hypot(e.x - p.x, e.y - p.y) <= p.r) { spd = Math.min(spd, e.speed * p.slowFactor); inMud = true; }
     }
     if (e.stunTimer > 0) { e.stunTimer -= dt; spd = 0; } // Tê Liệt: đứng hình
     const ang = Math.atan2(state.player.y - e.y, state.player.x - e.x);
@@ -169,6 +176,12 @@ function update(dt) {
       }
     }
 
+    // Golem đứng trong vũng bùn -> ăn thêm sát thương (Đất ghim & nghiền)
+    if (inMud && e.mudWeak && !e.dead) {
+      damageEnemy(e, e.mudWeak * dt);
+      if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKilled(e); }
+    }
+
     // Slime "tiêu hoá" đạn -> cháy theo MỨC ĐẦU TƯ HỆ LỬA của người chơi
     // (build lửa càng nặng + ngậm càng nhiều viên -> tan càng nhanh; không phụ thuộc viên nào ngậm)
     if (e.belly && e.belly.length && !e.dead) {
@@ -181,7 +194,7 @@ function update(dt) {
 
     if (e.hitFlash > 0) e.hitFlash -= dt;
     if (e.critFlash > 0) e.critFlash -= dt;
-    if (Math.hypot(e.x - state.player.x, e.y - state.player.y) < e.radius + state.player.radius) { gameOver(); return; }
+    if (Math.hypot(e.x - state.player.x, e.y - state.player.y) < e.radius + state.player.radius) { triggerDeath(); return; }
   }
 
   // Va chạm đạn ↔ enemy

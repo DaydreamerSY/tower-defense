@@ -5,14 +5,19 @@
    describeSkill, elementLabel, skillLvl). Thao tác overlay #levelupOverlay.
    ============================================================================ */
 
-// Lên cấp: bốc trong TẤT CẢ skill chưa max
+// Skill đủ điều kiện hiện trong pool: chưa max + đã có skill yêu cầu (requires) nếu có
+function skillAvailable(s) {
+  return skillLvl(s.id) < s.maxLevel && (!s.requires || skillLvl(s.requires) > 0);
+}
+
+// Lên cấp: bốc trong TẤT CẢ skill khả dụng
 function offerLevelUp() {
-  showSkillChoice(Store.skills.filter(s => skillLvl(s.id) < s.maxLevel), false);
+  showSkillChoice(Store.skills.filter(skillAvailable), false);
 }
 
 // Vũ khí: chọn 1 skill KHỞI ĐẦU cùng hệ khi vào trận
 function offerStarterSkill(element) {
-  showSkillChoice(Store.skills.filter(s => s.element === element && skillLvl(s.id) < s.maxLevel), true);
+  showSkillChoice(Store.skills.filter(s => s.element === element && skillAvailable(s)), true);
 }
 
 // Hiện 3 thẻ skill (starter=true: chọn khởi đầu, không trừ pendingLevelUps)

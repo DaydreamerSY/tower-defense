@@ -11,7 +11,15 @@ function hideOverlays() {
   document.getElementById('gameoverOverlay').classList.remove('show');
 }
 
-function gameOver() {
+// Bị chạm: chưa thua ngay -> hiện "!" + đóng băng cảnh, đếm ngược (update.js xử lý)
+function triggerDeath() {
+  if (state.dying) return;
+  state.dying = true;
+  state.deathTimer = 3;
+}
+
+// Hết 3s mới hiện pop-up thua (gọi từ update.js)
+function showGameOver() {
   state.running = false;
   const m = Math.floor(state.elapsed / 60), s = Math.floor(state.elapsed % 60);
   document.getElementById('gameoverStats').textContent =

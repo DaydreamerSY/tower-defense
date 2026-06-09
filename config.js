@@ -75,6 +75,14 @@ const MINIBOSS_TYPES = [
   // Tesla (hệ Điện): mọi sát thương KHÔNG phải điện ×insulate (rất nhỏ). Sét chạm vào
   // sẽ arc vòng quanh các cánh sao (mỗi cánh ăn 1 nhịp -> ×tipCount), không nảy sang con khác.
   { id:'tesla', name:'Tesla', shape:'star', baseHp:120, baseSpeed:36, radius:40, color:'#ffe14d', exp:30, insulate:0.15, nodes:true, tipCount:5 },
+
+  // Golem (hệ Đất): lao nhanh + trâu, đe doạ sống sót. Không kháng damage; khắc bằng KHỐNG CHẾ.
+  // mudWeak: đứng trong vũng bùn ăn thêm dmg/giây -> Đất ghim & nghiền là khắc tinh sạch nhất.
+  { id:'golem', name:'Golem', shape:'octagon', baseHp:100, baseSpeed:115, radius:38, color:'#6b4423', exp:30, mudWeak:4 },
+
+  // Cyclone (hệ Gió): "thổi chệch" đạn bắn THẲNG (×deflect); đạn XUYÊN/gió đi thẳng -> ×pierceBonus.
+  // DoT/AoE/sét đi đường riêng nên KHÔNG bị giảm -> nhiều build thắng được, Wind/pierce là tối ưu.
+  { id:'cyclone', name:'Cyclone', shape:'diamond', baseHp:70, baseSpeed:45, radius:38, color:'#38d9c0', exp:30, deflect:0.4, pierceBonus:2 },
 ];
 
 
@@ -164,13 +172,13 @@ const DEFAULT_SKILLS = [
     ] },
 
   { id:'earth2', name:'Heavy Shot', element:'earth', type:'globalMod', maxLevel:5,
-    desc:'Mọi viên đẩy lùi kẻ thù khi trúng, nhưng tốc độ bay giảm 20%.',
+    desc:'Mọi viên đẩy lùi kẻ thù khi trúng; đánh đổi chút tốc độ bay (giảm dần theo cấp).',
     levels:[
-      { knockback:30, speedMul:0.8 },
-      { knockback:45, speedMul:0.8 },
-      { knockback:60, speedMul:0.8 },
-      { knockback:80, speedMul:0.8 },
-      { knockback:100, speedMul:0.8 },
+      { knockback:40,  speedMul:0.90 },
+      { knockback:55,  speedMul:0.92 },
+      { knockback:70,  speedMul:0.94 },
+      { knockback:90,  speedMul:0.97 },
+      { knockback:110, speedMul:1.00 },
     ] },
 
   // ----- HỆ ĐIỆN -----
@@ -204,7 +212,7 @@ const DEFAULT_SKILLS = [
       { r:240, dmg:3 },
     ] },
 
-  { id:'elec4', name:'Overload', element:'electric', type:'passiveHit', maxLevel:5,
+  { id:'elec4', name:'Overload', element:'electric', type:'passiveHit', maxLevel:5, requires:'elec2',
     desc:'Đánh trúng kẻ thù đang tê liệt sẽ gây nổ điện diện rộng.',
     levels:[
       { dmg:2, r:70 },
@@ -266,13 +274,13 @@ const DEFAULT_SKILLS = [
     ] },
 
   { id:'wgust', name:'Gale', element:'wind', type:'globalMod', maxLevel:5,
-    desc:'Mỗi lần đạn nảy tạo luồng gió đẩy kẻ thù quanh điểm nảy ra xa.',
+    desc:'Mỗi lần đạn nảy tạo luồng gió đẩy nhẹ kẻ thù quanh điểm nảy.',
     levels:[
-      { r:90 },
-      { r:110 },
-      { r:130 },
-      { r:150 },
-      { r:180 },
+      { r:60,  push:40 },
+      { r:75,  push:45 },
+      { r:90,  push:50 },
+      { r:105, push:55 },
+      { r:120, push:60 },
     ] },
 
   // ----- PHỤ TRỢ -----

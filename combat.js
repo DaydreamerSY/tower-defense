@@ -58,13 +58,16 @@ function makeBullet(ang, speed, P) {
 }
 
 // Đẩy mọi enemy trong bán kính r ra rìa vòng, quanh tâm (px,py)
-function pushEnemiesFrom(px, py, r) {
+// nudge: nếu có -> đẩy 1 đoạn cố định (Gale); nếu không -> văng ra rìa bán kính (Wind Pulse)
+function pushEnemiesFrom(px, py, r, nudge) {
   for (const e of state.enemies) {
     const dx = e.x - px, dy = e.y - py;
     const d = Math.hypot(dx, dy);
     if (d > 0 && d < r) {
       const nx = dx / d, ny = dy / d;
-      if (e.isBoss) { const push = (r - d) * 0.25; e.x += nx * push; e.y += ny * push; } // boss kháng đẩy
+      const bossMul = e.isBoss ? 0.25 : 1; // boss kháng đẩy
+      if (nudge) { e.x += nx * nudge * bossMul; e.y += ny * nudge * bossMul; }
+      else if (e.isBoss) { const push = (r - d) * 0.25; e.x += nx * push; e.y += ny * push; }
       else { e.x = px + nx * r; e.y = py + ny * r; }
     }
   }
@@ -124,7 +127,13 @@ function bulletHit(b, e) {
   // Bạo kích: ×2 sát thương gốc
   let dmg = b.damage;
   if (critRoll()) { dmg *= 2; e.critFlash = 0.12; }
-  damageEnemy(e, dmg);   // damageEnemy đã tự áp insulate (Tesla kháng đạn trực tiếp)
+  // Cyclone: thổi chệch đạn bắn thẳng (×deflect); đạn xuyên/gió đi thẳng -> ×pierceBonus
+  let mult = 1;
+  if (e.deflect) {
+    const piercing = b.pierceLeft > 0 || b.elements.includes('wind');
+    mult = piercing ? (e.pierceBonus || 1) : e.deflect;
+  }
+  damageEnemy(e, dmg * mult);   // damageEnemy còn tự áp insulate (Tesla)
 
   // Bỏng (Fire1): thêm 1 stack có timer riêng
   const f1 = skillCur('fire1');
@@ -211,8 +220,8 @@ function onBounce(b, e) {
     });
   }
 
-  const wg = skillCur('wgust');     // Cuồng Phong: đẩy kẻ thù quanh điểm nảy
-  if (wg) pushEnemiesFrom(b.x, b.y, wg.r);
+  const wg = skillCur('wgust');     // Cuồng Phong: đẩy NHẸ kẻ thù quanh điểm nảy
+  if (wg) pushEnemiesFrom(b.x, b.y, wg.r, wg.push);
 }
 
 // Khoảng cách từ điểm (px,py) tới đoạn thẳng (x1,y1)-(x2,y2) — cho vệt lửa capsule

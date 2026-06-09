@@ -88,7 +88,7 @@ const SKILL_KEY_LABEL = {
   pierce:'+Xuyên', every:'Mỗi N phát', r:'Bán kính', slowFactor:'Hệ số chậm (×)',
   knockback:'Đẩy lùi (px)', speedMul:'×Tốc độ bay', mul:'×Hệ số', gain:'+EXP (0-1)',
   chain:'Số lan', dmg:'Sát thương', bounces:'+Lần nảy', speedup:'×Tăng tốc nảy',
-  count:'Số lượng', cooldown:'Hồi (s)', len:'Chiều dài', r:'Bán kính/Dày',
+  count:'Số lượng', cooldown:'Hồi (s)', len:'Chiều dài', r:'Bán kính/Dày', push:'Lực đẩy (px)',
 };
 function skillStep(k) {
   if (['chance','slowFactor','speedMul','mul','gain','speedup'].includes(k)) return 0.01;
