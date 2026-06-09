@@ -115,6 +115,22 @@ const DEFAULT_UPGRADES = [
 
   { id:'aoe',   name:'Nổ diện rộng', ico:'💥', desc:'Enemy chết nổ gây 1 dmg quanh đó.', maxLevel:3,
     effects:[ { kind:'fx', fx:'aoe', radius:70, damage:1 } ] },
+
+  // ----- Skill nguyên tố (port từ nhánh khanhnl) -----
+  { id:'chain', name:'Sét lan', ico:'⚡', desc:'Đòn trúng phóng sét sang 2 enemy gần, +1 dmg.', maxLevel:4,
+    effects:[ { kind:'fx', fx:'chain', count:2, dmg:1 } ] },
+
+  { id:'stun', name:'Tê liệt', ico:'🌀', desc:'25% đòn trúng làm enemy đứng hình 1s.', maxLevel:3,
+    effects:[ { kind:'fx', fx:'stun', chance:0.25, duration:1.0 } ] },
+
+  { id:'aura', name:'Điện trường', ico:'💠', desc:'Enemy quanh người bị giật 1 dmg mỗi 0.5s.', maxLevel:3,
+    effects:[ { kind:'fx', fx:'aura', radius:150, dmg:1 } ] },
+
+  { id:'knockback', name:'Đẩy lùi', ico:'🪨', desc:'Đòn trúng đẩy lùi enemy ra xa.', maxLevel:3,
+    effects:[ { kind:'fx', fx:'knockback', force:26 } ] },
+
+  { id:'windpulse', name:'Luồng gió', ico:'🌪️', desc:'Mỗi 40 phát bắn tạo luồng gió đẩy enemy quanh người.', maxLevel:3,
+    effects:[ { kind:'fx', fx:'windpulse', every:40, r:240 } ] },
 ];
 
 
@@ -140,6 +156,9 @@ const DEFAULT_SETS = [
 
   { id:'utility', name:'Hỗ trợ', ico:'✨', choices:3,
     upgradeIds:['pierce','spread','bulletspeed','firerate','movespeed'] },
+
+  { id:'element', name:'Nguyên tố', ico:'🔮', choices:3,
+    upgradeIds:['chain','stun','aura','knockback','windpulse','burn'] },
 ];
 
 
@@ -164,4 +183,9 @@ const FX_DEFS = [
   { key:'slow', label:'Làm chậm', params:[ {k:'factor',label:'Hệ số tốc độ',def:0.65}, {k:'duration',label:'Thời gian (s)',def:2.0} ] },
   { key:'burn', label:'Bỏng (DOT)', params:[ {k:'dps',label:'Dmg/giây',def:1}, {k:'duration',label:'Thời gian (s)',def:3.0} ] },
   { key:'aoe',  label:'Nổ diện rộng', params:[ {k:'radius',label:'Bán kính',def:70}, {k:'damage',label:'Sát thương',def:1} ] },
+  { key:'chain', label:'Sét lan (điện)', params:[ {k:'count',label:'Số mục tiêu',def:2}, {k:'dmg',label:'Sát thương',def:1} ] },
+  { key:'stun', label:'Tê liệt (điện)', params:[ {k:'chance',label:'Tỉ lệ (0-1)',def:0.25}, {k:'duration',label:'Thời gian (s)',def:1.0} ] },
+  { key:'aura', label:'Điện trường', params:[ {k:'radius',label:'Bán kính',def:150}, {k:'dmg',label:'Dmg mỗi 0.5s',def:1} ] },
+  { key:'knockback', label:'Đẩy lùi (đất)', params:[ {k:'force',label:'Lực đẩy',def:26} ] },
+  { key:'windpulse', label:'Luồng gió', params:[ {k:'every',label:'Mỗi N phát',def:40}, {k:'r',label:'Bán kính',def:240} ] },
 ];

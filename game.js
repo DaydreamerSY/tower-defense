@@ -84,6 +84,7 @@ function initState() {
     player: { x: VW / 2, y: VH / 2, radius: Store.balance.player.radius, stats: freshPlayerStats(), fireTimer: 0 },
     bullets: [], enemies: [], spawnTimer: 0,
     upgradeLevels: {}, particles: [],
+    bolts: [], auraTimer: 0, shotCount: 0, // skill nguyên tố: tia sét, đồng hồ điện trường, đếm phát bắn
     chosenSet: Store.getActiveSet(), // set của level (đặt trong màn Edit) — mọi lần lên cấp random trong set này
   };
 }
@@ -303,6 +304,10 @@ function fire() {
       alive: true, bounceCount: 0, hitSet: new Set(),
     });
   }
+  // Luồng gió (gió): cứ mỗi N phát bắn thì đẩy enemy quanh người ra xa
+  state.shotCount++;
+  const wp = P.fx.windpulse;
+  if (wp && state.shotCount % wp.every === 0) pushEnemiesFrom(state.player.x, state.player.y, wp.r, 70);
 }
 
 
@@ -344,6 +349,44 @@ function applyHitEffects(e) {
   const fx = state.player.stats.fx;
   if (fx.slow) { e.slowTimer = fx.slow.duration; e.slowFactor = fx.slow.factor; }
   if (fx.burn) { e.burnTimer = fx.burn.duration; e.burnDps = fx.burn.dps; }
+}
+
+/* ===== SKILL NGUYÊN TỐ (port từ nhánh khanhnl) — chỉ kích hoạt khi ĐẠN trúng trực tiếp ===== */
+function applyOnHitSkills(e) {
+  const fx = state.player.stats.fx;
+  // Tê liệt (điện): % cơ hội khiến enemy đứng hình
+  if (fx.stun && Math.random() < fx.stun.chance) e.stunTimer = Math.max(e.stunTimer || 0, fx.stun.duration);
+  // Đẩy lùi (đất): hất enemy ra xa khỏi nhân vật
+  if (fx.knockback) {
+    const dx = e.x - state.player.x, dy = e.y - state.player.y, d = Math.hypot(dx, dy) || 1;
+    e.x += dx / d * fx.knockback.force; e.y += dy / d * fx.knockback.force;
+  }
+  // Sét lan (điện): phóng sang vài enemy gần
+  if (fx.chain) chainLightning(e, fx.chain.count, fx.chain.dmg);
+}
+
+// Sét lan: từ 'src' nhảy sang 'count' enemy gần nhất trong bán kính, mỗi nhịp gây 'dmg'.
+function chainLightning(src, count, dmg) {
+  const cands = state.enemies
+    .filter(o => !o.dead && o !== src)
+    .map(o => ({ o, d: Math.hypot(o.x - src.x, o.y - src.y) }))
+    .filter(c => c.d <= 220).sort((a, b) => a.d - b.d).slice(0, count);
+  let from = src;
+  for (const c of cands) {
+    state.bolts.push({ x1: from.x, y1: from.y, x2: c.o.x, y2: c.o.y, life: 0.12 });
+    damageEnemy(c.o, dmg);
+    if (c.o.hp <= 0 && !c.o.dead) { c.o.dead = true; onEnemyKilled(c.o); }
+    from = c.o;
+  }
+}
+
+// Đẩy mọi enemy trong bán kính r ra xa khỏi (px,py) — dùng cho Luồng gió
+function pushEnemiesFrom(px, py, r, push) {
+  for (const e of state.enemies) {
+    if (e.dead) continue;
+    const dx = e.x - px, dy = e.y - py, d = Math.hypot(dx, dy);
+    if (d <= r && d > 0.01) { const k = push * (1 - d / r); e.x += dx / d * k; e.y += dy / d * k; }
+  }
 }
 function onEnemyKilled(enemy) {
   state.score += enemy.score; state.kills++;
@@ -471,10 +514,13 @@ function update(dt) {
   }
 
   for (const e of state.enemies) {
-    let spd = e.speed;
-    if (e.slowTimer > 0) { e.slowTimer -= dt; spd *= e.slowFactor; }
-    const ang = Math.atan2(state.player.y - e.y, state.player.x - e.x);
-    e.x += Math.cos(ang) * spd * dt; e.y += Math.sin(ang) * spd * dt;
+    if (e.stunTimer > 0) { e.stunTimer -= dt; }   // tê liệt: đứng hình, không di chuyển
+    else {
+      let spd = e.speed;
+      if (e.slowTimer > 0) { e.slowTimer -= dt; spd *= e.slowFactor; }
+      const ang = Math.atan2(state.player.y - e.y, state.player.x - e.x);
+      e.x += Math.cos(ang) * spd * dt; e.y += Math.sin(ang) * spd * dt;
+    }
     if (e.burnTimer > 0) {
       e.burnTimer -= dt; damageEnemy(e, e.burnDps * dt);
       if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKilled(e); }
@@ -488,7 +534,7 @@ function update(dt) {
       if (e.dead || b.hitSet.has(e)) continue;
       const col = collideBulletEnemy(b, e);   // vòng tròn hoặc từng ô khối tetromino
       if (col) {
-        damageEnemy(e, b.damage); applyHitEffects(e); b.hitSet.add(e);
+        damageEnemy(e, b.damage); applyHitEffects(e); applyOnHitSkills(e); b.hitSet.add(e);
         if (e.hp <= 0) { e.dead = true; onEnemyKilled(e); }
         if (b.pierceLeft > 0) {
           b.pierceLeft--;                 // đi thẳng xuyên qua enemy này
@@ -503,10 +549,28 @@ function update(dt) {
     }
   }
 
+  // Điện trường (aura): mỗi 0.5s giật enemy trong bán kính quanh người
+  const aura = state.player.stats.fx.aura;
+  if (aura) {
+    state.auraTimer += dt;
+    if (state.auraTimer >= 0.5) {
+      state.auraTimer = 0;
+      for (const e of state.enemies) {
+        if (e.dead) continue;
+        if (Math.hypot(e.x - state.player.x, e.y - state.player.y) <= aura.radius) {
+          damageEnemy(e, aura.dmg);
+          if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKilled(e); }
+        }
+      }
+    }
+  }
+
   state.bullets = state.bullets.filter(b => b.alive);
   state.enemies = state.enemies.filter(e => !e.dead);
   for (const p of state.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }
   state.particles = state.particles.filter(p => p.life > 0);
+  for (const z of state.bolts) z.life -= dt;            // tia sét mờ dần
+  state.bolts = state.bolts.filter(z => z.life > 0);
 
   // Đủ điểm -> lên cấp: random upgrade trong set đã chọn
   if (state.score >= state.nextUpgradeAt) { levelUp(); }
@@ -534,6 +598,9 @@ function drawEnemy(e) {
     ctx.fillStyle = 'rgba(0,0,0,.2)'; ctx.fillRect(e.x-w/2, e.y-e.radius-9, w, 4);
     ctx.fillStyle = '#34c759'; ctx.fillRect(e.x-w/2, e.y-e.radius-9, hpw, 4);
   }
+  if (e.stunTimer > 0) {   // dấu tê liệt: chấm vàng trên đầu
+    ctx.fillStyle = '#ffe14d'; ctx.beginPath(); ctx.arc(e.x, e.y - e.radius - 14, 3, 0, Math.PI*2); ctx.fill();
+  }
 }
 function render() {
   ctx.clearRect(0, 0, VW, VH);
@@ -542,9 +609,25 @@ function render() {
     ctx.beginPath(); ctx.arc(p.x, p.y, 3, 0, Math.PI*2); ctx.fill();
   }
   ctx.globalAlpha = 1;
+
+  // Điện trường: vòng tròn mờ quanh người (skill aura)
+  const auraFx = state.player.stats.fx.aura;
+  if (auraFx) {
+    ctx.strokeStyle = 'rgba(255,225,77,.35)'; ctx.lineWidth = 2;
+    ctx.beginPath(); ctx.arc(state.player.x, state.player.y, auraFx.radius, 0, Math.PI*2); ctx.stroke();
+  }
+
   state.enemies.forEach(drawEnemy);
   ctx.fillStyle = '#2b2f38';
   for (const b of state.bullets) { ctx.beginPath(); ctx.arc(b.x, b.y, b.radius, 0, Math.PI*2); ctx.fill(); }
+
+  // Tia sét (skill sét lan) — vẽ đường vàng mờ dần
+  ctx.strokeStyle = '#ffe14d'; ctx.lineWidth = 2;
+  for (const z of state.bolts) {
+    ctx.globalAlpha = Math.max(0, z.life / 0.12);
+    ctx.beginPath(); ctx.moveTo(z.x1, z.y1); ctx.lineTo(z.x2, z.y2); ctx.stroke();
+  }
+  ctx.globalAlpha = 1; ctx.lineWidth = 2;
 
   // đường ngắm
   const aim = lastAim;

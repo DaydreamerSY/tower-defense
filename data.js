@@ -101,6 +101,25 @@ function applyUpgrade(P, upgrade) {
         P.fx.aoe = P.fx.aoe || { radius: e.radius, damage: 0 };
         P.fx.aoe.damage += e.damage;       // cộng dồn dmg
         P.fx.aoe.radius = e.radius;
+      } else if (e.fx === 'chain') {       // sét lan (port từ khanhnl)
+        P.fx.chain = P.fx.chain || { count: 0, dmg: 0 };
+        P.fx.chain.count = Math.max(P.fx.chain.count, e.count);
+        P.fx.chain.dmg += e.dmg;
+      } else if (e.fx === 'stun') {        // tê liệt
+        P.fx.stun = P.fx.stun || { chance: 0, duration: e.duration };
+        P.fx.stun.chance = Math.min(1, P.fx.stun.chance + e.chance);
+        P.fx.stun.duration = Math.max(P.fx.stun.duration, e.duration);
+      } else if (e.fx === 'aura') {        // điện trường quanh người
+        P.fx.aura = P.fx.aura || { radius: e.radius, dmg: 0 };
+        P.fx.aura.dmg += e.dmg;
+        P.fx.aura.radius = Math.max(P.fx.aura.radius, e.radius);
+      } else if (e.fx === 'knockback') {   // đẩy lùi khi trúng
+        P.fx.knockback = P.fx.knockback || { force: 0 };
+        P.fx.knockback.force += e.force;
+      } else if (e.fx === 'windpulse') {   // luồng gió định kỳ
+        P.fx.windpulse = P.fx.windpulse || { every: e.every, r: e.r };
+        P.fx.windpulse.every = Math.min(P.fx.windpulse.every, e.every);
+        P.fx.windpulse.r = Math.max(P.fx.windpulse.r, e.r);
       }
     }
   }
