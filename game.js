@@ -86,6 +86,8 @@ function initState() {
     upgradeLevels: {}, particles: [],
     bolts: [], auraTimer: 0, shotCount: 0, // skill nguyên tố: tia sét, đồng hồ điện trường, đếm phát bắn
     puddles: [], firezones: [], walls: [], rings: [], wallTimer: 0, // zone bùn / vệt lửa / tường / hiệu ứng gió
+    lastUpgradeAt: 0,                       // mốc điểm khi cấp hiện tại bắt đầu (cho thanh EXP)
+    nextBossAt: Store.balance.miniboss.firstAt, bossWarn: 0, bossType: null, // lịch + cảnh báo miniboss
     chosenSet: Store.getActiveSet(), // set của level (đặt trong màn Edit) — mọi lần lên cấp random trong set này
   };
 }
@@ -286,6 +288,18 @@ function spawnEnemy() {
   state.enemies.push(e);
 }
 
+// Sinh 1 miniboss ở rìa màn hình
+function spawnBoss(typeKey) {
+  const stats = makeMinibossStats(typeKey, state.elapsed);
+  const m = 60; let x, y;
+  const side = Math.floor(Math.random() * 4);
+  if (side === 0)      { x = Math.random() * VW; y = -m; }
+  else if (side === 1) { x = VW + m; y = Math.random() * VH; }
+  else if (side === 2) { x = Math.random() * VW; y = VH + m; }
+  else                 { x = -m; y = Math.random() * VH; }
+  state.enemies.push(Object.assign(stats, { x, y, slowTimer: 0, slowFactor: 1, burnTimer: 0, burnDps: 0, hitFlash: 0 }));
+}
+
 
 /* ---------------- BẮN ĐẠN ---------------- */
 function fire() {
@@ -356,7 +370,7 @@ function reflectCell(b, col) {
   b.x = col.qx + col.nx * (b.radius + 0.5);
   b.y = col.qy + col.ny * (b.radius + 0.5);
 }
-function damageEnemy(e, dmg) { e.hp -= dmg; e.hitFlash = 0.08; }
+function damageEnemy(e, dmg) { e.hp -= dmg * (e.insulate || 1); e.hitFlash = 0.08; } // boss 'insulate' chịu dmg giảm
 
 function applyHitEffects(e) {
   const fx = state.player.stats.fx;
@@ -370,10 +384,11 @@ function applyOnHitSkills(e, b) {
   const fx = state.player.stats.fx;
   // Tê liệt (điện): % cơ hội khiến enemy đứng hình
   if (fx.stun && Math.random() < fx.stun.chance) e.stunTimer = Math.max(e.stunTimer || 0, fx.stun.duration);
-  // Đẩy lùi (đất): hất enemy ra xa khỏi nhân vật
+  // Đẩy lùi (đất): hất enemy ra xa khỏi nhân vật (boss kháng đẩy)
   if (fx.knockback) {
     const dx = e.x - state.player.x, dy = e.y - state.player.y, d = Math.hypot(dx, dy) || 1;
-    e.x += dx / d * fx.knockback.force; e.y += dy / d * fx.knockback.force;
+    const f = fx.knockback.force * (e.isBoss ? 0.15 : 1);
+    e.x += dx / d * f; e.y += dy / d * f;
   }
   // Sét lan luôn-bật (điện)
   if (fx.chain) chainLightning(e, fx.chain.count, fx.chain.dmg);
@@ -443,7 +458,7 @@ function pushEnemiesFrom(px, py, r, push) {
   for (const e of state.enemies) {
     if (e.dead) continue;
     const dx = e.x - px, dy = e.y - py, d = Math.hypot(dx, dy);
-    if (d <= r && d > 0.01) { const k = push * (1 - d / r); e.x += dx / d * k; e.y += dy / d * k; }
+    if (d <= r && d > 0.01) { const k = push * (1 - d / r) * (e.isBoss ? 0.25 : 1); e.x += dx / d * k; e.y += dy / d * k; }
   }
 }
 function onEnemyKilled(enemy) {
@@ -518,6 +533,7 @@ function chooseUpgrade(u) {
   applyUpgrade(state.player.stats, u);
   state.upgradeLevels[u.id] = (state.upgradeLevels[u.id] || 0) + 1;
   state.upgradesTaken++;
+  state.lastUpgradeAt = state.nextUpgradeAt;   // mốc bắt đầu thanh EXP của cấp mới
   state.nextUpgradeAt += Store.balance.upgrade.baseCost + Store.balance.upgrade.costStep * state.upgradesTaken;
   document.getElementById('upgradeOverlay').classList.remove('show');
   state.paused = false;
@@ -563,8 +579,25 @@ function update(dt) {
   state.player.fireTimer -= dt;
   if (state.player.fireTimer <= 0) { fire(); state.player.fireTimer = state.player.stats.fireCooldown; }
 
+  const bossAlive = state.enemies.some(e => e.isBoss && !e.dead);
   state.spawnTimer -= dt;
-  if (state.spawnTimer <= 0) { spawnEnemy(); state.spawnTimer = currentSpawnInterval(state.elapsed); }
+  if (state.spawnTimer <= 0) {
+    spawnEnemy();
+    let iv = currentSpawnInterval(state.elapsed);
+    if (bossAlive) iv *= Store.balance.miniboss.sparseMul; // boss còn sống -> quái thường thưa hơn
+    state.spawnTimer = iv;
+  }
+
+  // Lịch miniboss: tới giờ -> hiện CẢNH BÁO; hết cảnh báo -> sinh boss
+  const mb = Store.balance.miniboss;
+  if (state.bossWarn <= 0 && state.bossType == null && state.elapsed >= state.nextBossAt) {
+    state.bossWarn = mb.warnLead;
+    state.bossType = MINIBOSS_TYPES[Math.floor(Math.random() * MINIBOSS_TYPES.length)].id;
+  }
+  if (state.bossWarn > 0) {
+    state.bossWarn -= dt;
+    if (state.bossWarn <= 0) { spawnBoss(state.bossType); state.bossType = null; state.nextBossAt = state.elapsed + mb.every; }
+  }
 
   for (const b of state.bullets) {
     b.px = b.x; b.py = b.y;             // lưu vị trí trước khi di chuyển (cho reflect)
@@ -609,7 +642,9 @@ function update(dt) {
           }
           b.noSplit = true;
         }
-        if (b.pierceLeft > 0) {
+        if (e.absorb) {
+          b.alive = false;                // Boss Slime NGẬM đạn: đạn chết, không nảy/xuyên (DoT vẫn cháy)
+        } else if (b.pierceLeft > 0) {
           b.pierceLeft--;                 // đi thẳng xuyên qua enemy này
         } else {
           if (col.circle) reflect(b, e);  // vòng tròn: dùng giao đoạn–vòng tròn chính xác
@@ -727,12 +762,28 @@ function bulletWallBounce(b) {
 
 
 /* ---------------- RENDER ---------------- */
+// Vẽ đa giác đều (hoặc ngôi sao) cho miniboss
+function drawPoly(r, sides, star) {
+  ctx.beginPath();
+  for (let i = 0; i < sides * (star ? 2 : 1); i++) {
+    const ang = -Math.PI / 2 + i * Math.PI / (sides * (star ? 1 : 0.5));
+    const rr = star ? (i % 2 ? r * 0.5 : r) : r;
+    const px = Math.cos(ang) * rr, py = Math.sin(ang) * rr;
+    i ? ctx.lineTo(px, py) : ctx.moveTo(px, py);
+  }
+  ctx.closePath(); ctx.fill(); ctx.stroke();
+}
 function drawEnemy(e) {
   ctx.save(); ctx.translate(e.x, e.y);
   ctx.fillStyle = e.hitFlash > 0 ? '#ffffff' : e.color;
-  ctx.strokeStyle = '#2b2f38'; ctx.lineWidth = 2;
+  ctx.strokeStyle = '#2b2f38'; ctx.lineWidth = e.isBoss ? 3 : 2;
   const r = e.radius;
-  if (e.shape === 'tetromino') {
+  if (e.isBoss) {
+    if (e.shape === 'star') drawPoly(r, 5, true);
+    else if (e.shape === 'octagon') drawPoly(r, 8, false);
+    else drawPoly(r, 6, false);   // hexagon mặc định
+  }
+  else if (e.shape === 'tetromino') {
     const s = e.cell, h = s / 2;
     for (const c of e.cells) {       // vẽ từng ô vuông của khối
       ctx.beginPath(); ctx.rect(c[0]*s - h, c[1]*s - h, s, s); ctx.fill(); ctx.stroke();
@@ -807,13 +858,43 @@ function render() {
   drawHUD();
 }
 function drawHUD() {
-  ctx.fillStyle = '#2b2f38'; ctx.font = 'bold 22px sans-serif'; ctx.textAlign = 'left';
-  ctx.fillText(`Điểm: ${state.score}`, 16, 32);
   const m = Math.floor(state.elapsed/60), s = Math.floor(state.elapsed%60);
-  ctx.textAlign = 'right'; ctx.fillText(`${m}:${s.toString().padStart(2,'0')}`, VW-16, 32);
-  ctx.textAlign = 'left'; ctx.font = '13px sans-serif'; ctx.fillStyle = '#6b7280';
-  ctx.fillText(`Nâng cấp kế: ${state.score}/${state.nextUpgradeAt}`, 16, 52);
-  ctx.textAlign = 'right'; ctx.fillText(`Độ khó: ${difficultyStep(state.elapsed)+1}`, VW-16, 52);
+  // Hàng chữ: Cấp • thời gian • độ khó
+  ctx.fillStyle = '#2b2f38'; ctx.font = 'bold 20px sans-serif'; ctx.textAlign = 'left';
+  ctx.fillText(`Cấp ${state.upgradesTaken + 1}`, 16, 30);
+  ctx.textAlign = 'center'; ctx.fillText(`${m}:${s.toString().padStart(2,'0')}`, VW/2, 30);
+  ctx.textAlign = 'right'; ctx.font = '13px sans-serif'; ctx.fillStyle = '#6b7280';
+  ctx.fillText(`Độ khó ${difficultyStep(state.elapsed)+1}`, VW-16, 28);
+
+  // THANH EXP: tiến độ từ mốc cấp trước -> mốc nâng cấp kế
+  const x0 = 16, y0 = 40, w = VW - 32, h = 12;
+  const span = Math.max(1, state.nextUpgradeAt - state.lastUpgradeAt);
+  const frac = Math.max(0, Math.min(1, (state.score - state.lastUpgradeAt) / span));
+  ctx.fillStyle = '#e3e6ec'; ctx.fillRect(x0, y0, w, h);
+  ctx.fillStyle = '#4c8dff'; ctx.fillRect(x0, y0, w * frac, h);
+  ctx.strokeStyle = '#b8c0cc'; ctx.lineWidth = 1; ctx.strokeRect(x0, y0, w, h);
+  ctx.fillStyle = '#2b2f38'; ctx.font = '11px sans-serif'; ctx.textAlign = 'center';
+  ctx.fillText(`EXP ${state.score - state.lastUpgradeAt}/${span}`, VW/2, y0 + 10);
+
+  // THANH MÁU BOSS (nếu có boss còn sống)
+  const boss = state.enemies.find(e => e.isBoss && !e.dead);
+  if (boss) {
+    const bw = VW - 40, bx = 20, by = 66, bh = 16;
+    ctx.fillStyle = 'rgba(0,0,0,.25)'; ctx.fillRect(bx, by, bw, bh);
+    ctx.fillStyle = '#ff5277'; ctx.fillRect(bx, by, bw * Math.max(0, boss.hp) / boss.maxHp, bh);
+    ctx.strokeStyle = '#2b2f38'; ctx.lineWidth = 2; ctx.strokeRect(bx, by, bw, bh);
+    ctx.fillStyle = '#2b2f38'; ctx.font = 'bold 12px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText(`BOSS · ${boss.name}`, VW/2, by + 12);
+  }
+
+  // BANNER CẢNH BÁO BOSS
+  if (state.bossWarn > 0) {
+    const blink = Math.floor(state.elapsed * 6) % 2 === 0;
+    ctx.textAlign = 'center';
+    ctx.fillStyle = blink ? '#ff3b3b' : '#ff7a59';
+    ctx.font = 'bold 30px sans-serif';
+    ctx.fillText('⚠ BOSS SẮP XUẤT HIỆN', VW/2, VH/2 - 40);
+  }
 }
 
 

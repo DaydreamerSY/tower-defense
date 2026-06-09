@@ -31,9 +31,10 @@ const Store = {
         if (d.activeSetId) this.activeSetId = d.activeSetId;
       }
     } catch (e) { /* localStorage có thể bị chặn khi mở file:// — bỏ qua, dùng mặc định */ }
-    // Backfill các field mới cho dữ liệu cũ (tránh lỗi khi save cũ chưa có map/moveSpeed)
+    // Backfill các field mới cho dữ liệu cũ (tránh lỗi khi save cũ chưa có map/moveSpeed/miniboss)
     if (!this.balance.map) this.balance.map = clone(DEFAULT_BALANCE.map);
     if (this.balance.player.moveSpeed == null) this.balance.player.moveSpeed = DEFAULT_BALANCE.player.moveSpeed;
+    if (!this.balance.miniboss) this.balance.miniboss = clone(DEFAULT_BALANCE.miniboss);
   },
 
   // Lưu xuống localStorage
@@ -208,4 +209,20 @@ function currentSpawnInterval(elapsed) {
   const d = Store.balance.difficulty;
   const step = difficultyStep(elapsed);
   return Math.max(d.spawnMin, d.spawnStart - step * d.spawnRampPerStep);
+}
+
+// Chỉ số miniboss — HP cao, scaling theo thời gian như quái thường
+function makeMinibossStats(typeKey, elapsed) {
+  const t = MINIBOSS_TYPES.find(m => m.id === typeKey) || MINIBOSS_TYPES[0];
+  const d = Store.balance.difficulty;
+  const step = difficultyStep(elapsed);
+  const hpMul = 1 + step * d.hpGrowthPerStep;
+  const spMul = Math.min(d.speedCap, 1 + step * d.speedGrowthPerStep);
+  return {
+    type: typeKey, name: t.name, shape: t.shape, color: t.color, radius: t.radius, score: t.score,
+    maxHp: Math.round(t.baseHp * hpMul),
+    hp:    Math.round(t.baseHp * hpMul),
+    speed: t.baseSpeed * spMul,
+    isBoss: true, absorb: !!t.absorb, insulate: t.insulate || 1,
+  };
 }

@@ -60,7 +60,25 @@ const DEFAULT_BALANCE = {
   // Ngưỡng điểm để được lên cấp (chọn nâng cấp)
   // lần sau = lần trước + baseCost + costStep * (số lần đã nâng)
   upgrade: { baseCost: 5, costStep: 4 },
+
+  // Miniboss: xuất hiện theo thời gian, có CẢNH BÁO trước khi vào sân
+  miniboss: {
+    firstAt: 45,    // giây xuất hiện con đầu tiên
+    every: 75,      // sau đó mỗi 75s thêm 1 con
+    warnLead: 2.5,  // banner cảnh báo hiện trước 2.5s
+    sparseMul: 2,   // khi boss còn sống, quái thường spawn thưa gấp 2
+  },
 };
+
+/* Miniboss: HP cao, to, đặc tính riêng "khắc" 1 lối build.
+   absorb  = ngậm đạn (đạn chết khi chạm, KHÔNG nảy) -> khắc build nảy/xuyên.
+   insulate= chịu sát thương giảm (×insulate) -> tăng độ trâu, ưu DoT/aura.
+   speed cao (golem) -> ép người chơi né nhiều. */
+const MINIBOSS_TYPES = [
+  { id:'slime',  name:'Slime',  shape:'hexagon', baseHp:90,  baseSpeed:30,  radius:42, color:'#7bdcb5', score:25, absorb:true },
+  { id:'tesla',  name:'Tesla',  shape:'star',    baseHp:120, baseSpeed:36,  radius:40, color:'#ffe14d', score:30, insulate:0.4 },
+  { id:'golem',  name:'Golem',  shape:'octagon', baseHp:100, baseSpeed:105, radius:38, color:'#b07a45', score:30 },
+];
 
 
 /* ---------------------------------------------------------------------------
