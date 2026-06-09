@@ -1,23 +1,20 @@
 /* ============================================================================
-   [data.js] KHO DỮ LIỆU (Store) + LƯU/TẢI + DIỄN GIẢI HIỆU ỨNG
+   [data.js] KHO DỮ LIỆU (Store) + LƯU/TẢI + HELPER SCALING
    ----------------------------------------------------------------------------
-   Phụ thuộc: config.js (DEFAULT_BALANCE, DEFAULT_UPGRADES, DEFAULT_SETS).
-   - Store giữ dữ liệu đang dùng (balance / upgrades / sets).
+   Phụ thuộc: config.js (DEFAULT_BALANCE, DEFAULT_SKILLS).
+   - Store giữ dữ liệu đang dùng (balance / skills).
    - Tự lưu vào localStorage; có export/import JSON; reset về mặc định.
-   - applyUpgrade(): "diễn giải" mảng effects thành thay đổi chỉ số.
-   - Các helper scaling (difficultyStep, makeEnemyStats...) đọc Store.balance.
+   - Các helper scaling (difficultyStep, makeEnemyStats, expForLevel...) đọc Store.
    ============================================================================ */
 
-const STORAGE_KEY = 'shuriken_proto_v1';
+const STORAGE_KEY = 'shuriken_proto_v2';
 
 // Sao chép sâu đơn giản (dữ liệu thuần JSON nên dùng được)
 function clone(obj) { return JSON.parse(JSON.stringify(obj)); }
 
 const Store = {
-  balance:  clone(DEFAULT_BALANCE),
-  upgrades: clone(DEFAULT_UPGRADES),
-  sets:     clone(DEFAULT_SETS),
-  activeSetId: DEFAULT_SETS[0].id,   // set dùng cho level (chọn trong màn Edit)
+  balance: clone(DEFAULT_BALANCE),
+  skills:  clone(DEFAULT_SKILLS),
 
   // Nạp từ localStorage (nếu có), không thì giữ mặc định
   load() {
@@ -25,10 +22,16 @@ const Store = {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const d = JSON.parse(raw);
-        if (d.balance)     this.balance  = d.balance;
-        if (d.upgrades)    this.upgrades = d.upgrades;
-        if (d.sets)        this.sets     = d.sets;
-        if (d.activeSetId) this.activeSetId = d.activeSetId;
+        if (d.balance) this.balance = d.balance;
+        if (d.skills)  this.skills  = d.skills;
+        // Backfill field mới nếu data lưu cũ chưa có (tránh undefined)
+        if (this.balance.enemySpeedMul === undefined) this.balance.enemySpeedMul = DEFAULT_BALANCE.enemySpeedMul;
+        if (this.balance.miniboss === undefined) this.balance.miniboss = clone(DEFAULT_BALANCE.miniboss);
+        // Bổ sung skill mới có trong config nhưng chưa có trong data đã lưu
+        // (giữ nguyên tweak cũ, chỉ THÊM skill thiếu — không ghi đè giá trị).
+        for (const def of DEFAULT_SKILLS) {
+          if (!this.skills.find(s => s.id === def.id)) this.skills.push(clone(def));
+        }
       }
     } catch (e) { /* localStorage có thể bị chặn khi mở file:// — bỏ qua, dùng mặc định */ }
   },
@@ -37,23 +40,22 @@ const Store = {
   save() {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify({
-        balance: this.balance, upgrades: this.upgrades, sets: this.sets, activeSetId: this.activeSetId,
+        balance: this.balance, skills: this.skills,
       }));
     } catch (e) { /* bỏ qua nếu bị chặn */ }
   },
 
   // Xuất JSON (để sao lưu / chia sẻ config)
   exportJSON() {
-    return JSON.stringify({ balance: this.balance, upgrades: this.upgrades, sets: this.sets, activeSetId: this.activeSetId }, null, 2);
+    return JSON.stringify({ balance: this.balance, skills: this.skills }, null, 2);
   },
 
   // Nhập JSON; trả về true nếu hợp lệ
   importJSON(text) {
     try {
       const d = JSON.parse(text);
-      if (!d.balance || !d.upgrades || !d.sets) return false;
-      this.balance = d.balance; this.upgrades = d.upgrades; this.sets = d.sets;
-      if (d.activeSetId) this.activeSetId = d.activeSetId;
+      if (!d.balance || !d.skills) return false;
+      this.balance = d.balance; this.skills = d.skills;
       this.save();
       return true;
     } catch (e) { return false; }
@@ -61,47 +63,15 @@ const Store = {
 
   // Reset toàn bộ về mặc định trong config.js
   reset() {
-    this.balance  = clone(DEFAULT_BALANCE);
-    this.upgrades = clone(DEFAULT_UPGRADES);
-    this.sets     = clone(DEFAULT_SETS);
-    this.activeSetId = DEFAULT_SETS[0].id;
+    this.balance = clone(DEFAULT_BALANCE);
+    this.skills  = clone(DEFAULT_SKILLS);
     this.save();
   },
 
-  // Tìm upgrade theo id
-  getUpgrade(id) { return this.upgrades.find(u => u.id === id); },
-
-  // Set đang dùng cho level (fallback set đầu tiên nếu id không còn)
-  getActiveSet() { return this.sets.find(s => s.id === this.activeSetId) || this.sets[0] || null; },
+  // Tìm skill theo id
+  getSkill(id) { return this.skills.find(s => s.id === id); },
 };
 Store.load();
-
-
-/* ---------------------------------------------------------------------------
-   DIỄN GIẢI HIỆU ỨNG: biến mảng effects của 1 upgrade thành thay đổi chỉ số.
-   P = state.player.stats  (đã có sẵn túi P.fx = {} để chứa hiệu ứng đặc biệt)
-   --------------------------------------------------------------------------- */
-function applyUpgrade(P, upgrade) {
-  for (const e of (upgrade.effects || [])) {
-    if (e.kind === 'stat') {
-      if (e.op === 'add')      P[e.target] += e.value;
-      else if (e.op === 'mul') P[e.target] *= e.value;
-      else if (e.op === 'set') P[e.target]  = e.value;
-    } else if (e.kind === 'fx') {
-      if (e.fx === 'slow') {
-        P.fx.slow = { factor: e.factor, duration: e.duration };
-      } else if (e.fx === 'burn') {
-        P.fx.burn = P.fx.burn || { dps: 0, duration: e.duration };
-        P.fx.burn.dps += e.dps;            // cộng dồn dps
-        P.fx.burn.duration = e.duration;
-      } else if (e.fx === 'aoe') {
-        P.fx.aoe = P.fx.aoe || { radius: e.radius, damage: 0 };
-        P.fx.aoe.damage += e.damage;       // cộng dồn dmg
-        P.fx.aoe.radius = e.radius;
-      }
-    }
-  }
-}
 
 
 /* ---------------------------------------------------------------------------
@@ -117,11 +87,30 @@ function makeEnemyStats(typeKey, elapsed) {
   const step = difficultyStep(elapsed);
   const hpMul = 1 + step * d.hpGrowthPerStep;
   const spMul = Math.min(d.speedCap, 1 + step * d.speedGrowthPerStep);
+  const globalSpeed = Store.balance.enemySpeedMul ?? 1; // knob tốc độ toàn cục
   return {
-    type: typeKey, shape: t.shape, color: t.color, radius: t.radius, score: t.score,
+    type: typeKey, shape: t.shape, color: t.color, radius: t.radius, exp: t.exp,
     maxHp: Math.round(t.baseHp * hpMul),
     hp:    Math.round(t.baseHp * hpMul),
-    speed: t.baseSpeed * spMul,
+    speed: t.baseSpeed * spMul * globalSpeed,
+  };
+}
+
+// Chỉ số miniboss (HP cao, chậm) — scaling theo thời gian như mob thường
+function makeMinibossStats(typeKey, elapsed) {
+  const t = MINIBOSS_TYPES.find(m => m.id === typeKey) || MINIBOSS_TYPES[0];
+  const d = Store.balance.difficulty;
+  const step = difficultyStep(elapsed);
+  const hpMul = 1 + step * d.hpGrowthPerStep;
+  const spMul = Math.min(d.speedCap, 1 + step * d.speedGrowthPerStep);
+  const globalSpeed = Store.balance.enemySpeedMul ?? 1;
+  return {
+    type: typeKey, shape: t.shape, color: t.color, radius: t.radius, exp: t.exp,
+    maxHp: Math.round(t.baseHp * hpMul),
+    hp:    Math.round(t.baseHp * hpMul),
+    speed: t.baseSpeed * spMul * globalSpeed,
+    isBoss: true, absorb: !!t.absorb, bellyMax: t.bellyMax || 7,
+    insulate: t.insulate, nodes: t.nodes, tipCount: t.tipCount,   // Tesla: kháng phi-điện / sét arc quanh cánh sao
   };
 }
 
@@ -129,4 +118,10 @@ function currentSpawnInterval(elapsed) {
   const d = Store.balance.difficulty;
   const step = difficultyStep(elapsed);
   return Math.max(d.spawnMin, d.spawnStart - step * d.spawnRampPerStep);
+}
+
+// EXP cần để vượt 'level' hiện tại (level 1 cần baseExp, sau đó +expStep mỗi cấp)
+function expForLevel(level) {
+  const L = Store.balance.level;
+  return L.baseExp + L.expStep * (level - 1);
 }

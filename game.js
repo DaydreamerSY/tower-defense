@@ -70,16 +70,13 @@ function initState() {
     player: { x: VW / 2, y: VH / 2, radius: Store.balance.player.radius, stats: freshPlayerStats(), fireTimer: 0 },
     bullets: [], enemies: [], spawnTimer: 0,
     upgradeLevels: {}, particles: [],
-    chosenSet: Store.getActiveSet(), // set của level (đặt trong màn Edit) — mọi lần lên cấp random trong set này
+    pendingSet: null, // set đang chờ chọn upgrade
   };
 }
 
 
 /* ---------------- NGẮM ----------------
-   - Auto-play: quét nhiều góc quanh hướng tới enemy gần nhất, MÔ PHỎNG đường đạn
-     (kể cả nảy) cho từng góc, rồi chọn góc trúng được NHIỀU enemy nhất — ưu tiên
-     đường đạn vẫn trúng enemy gần nhất để luôn xử lý mối đe doạ trước mắt.
-   - Tắt auto-play: ngắm theo chuột. */
+   FEATURE auto-play: trả về góc tới enemy gần nhất; nếu tắt thì ngắm theo chuột. */
 function findClosestEnemy() {
   let best = null, bd = Infinity;
   for (const e of state.enemies) {
@@ -88,79 +85,14 @@ function findClosestEnemy() {
   }
   return best;
 }
-
-// Tham số mô phỏng đường đạn (chỉ dùng cho auto-aim, không ảnh hưởng gameplay)
-// stepDeg=2 -> quét 360° thành 180 hướng mỗi frame.
-const AIM = { stepDeg: 2, bulletR: 6, maxBounces: 32 };
-
-// Khoảng cách từ (x,y) theo hướng (dx,dy) tới khi ra khỏi màn hình
-function distToWall(x, y, dx, dy) {
-  let t = Infinity;
-  if (dx > 0) t = Math.min(t, (VW - x) / dx); else if (dx < 0) t = Math.min(t, (0 - x) / dx);
-  if (dy > 0) t = Math.min(t, (VH - y) / dy); else if (dy < 0) t = Math.min(t, (0 - y) / dy);
-  return t;
-}
-
-// Mô phỏng CHÍNH XÁC đường đạn bằng giao tia–vòng tròn (khớp đúng vật lý reflect thật).
-// Trả về { hits:Set chỉ số enemy nảy trúng, firstDist:khoảng cách tới mục tiêu đầu tiên }.
-function simulateHits(angle) {
-  const en = state.enemies;
-  let ox = state.player.x, oy = state.player.y;
-  let dx = Math.cos(angle), dy = Math.sin(angle);
-  const hits = new Set();
-  let firstDist = Infinity;
-  for (let bounce = 0; bounce < AIM.maxBounces; bounce++) {
-    // tìm enemy gần nhất mà tia đâm vào (nghiệm t nhỏ nhất > 0)
-    let bestT = Infinity, bestI = -1, cpx = 0, cpy = 0;
-    for (let i = 0; i < en.length; i++) {
-      if (hits.has(i)) continue;
-      const e = en[i], R = e.radius + AIM.bulletR;
-      const ocx = ox - e.x, ocy = oy - e.y;
-      const b = ocx * dx + ocy * dy;
-      const c = ocx * ocx + ocy * ocy - R * R;
-      const disc = b * b - c;
-      if (disc < 0) continue;
-      const t = -b - Math.sqrt(disc);   // giao điểm vào (gần nhất)
-      if (t > 0.001 && t < bestT) { bestT = t; bestI = i; cpx = ox + dx * t; cpy = oy + dy * t; }
-    }
-    const tWall = distToWall(ox, oy, dx, dy);
-    if (bestI < 0 || bestT > tWall) break;   // ra tường trước khi gặp enemy -> dừng
-    if (bounce === 0) firstDist = bestT;
-    hits.add(bestI);
-    const e = en[bestI], R = e.radius + AIM.bulletR;
-    // điểm chạm nằm đúng trên vòng tròn -> pháp tuyến = (điểm chạm - tâm)/R
-    let nx = (cpx - e.x) / R, ny = (cpy - e.y) / R;
-    const dot = dx * nx + dy * ny;
-    dx -= 2 * dot * nx; dy -= 2 * dot * ny;        // phản xạ gương
-    ox = e.x + nx * (R + 0.5); oy = e.y + ny * (R + 0.5);
+function aimAngle() {
+  if (Game.autoPlay) {
+    const t = findClosestEnemy();
+    if (t) lastAim = Math.atan2(t.y - state.player.y, t.x - state.player.x);
+    return lastAim;
   }
-  return { hits, firstDist };
-}
-
-// Chọn góc bắn tối ưu: QUÉT TOÀN 360°.
-// Ưu tiên: (1) BẮT BUỘC trúng enemy gần nhất -> (2) trúng nhiều enemy nhất -> (3) chạm mục tiêu đầu sớm nhất.
-function bestAimAngle() {
-  if (!state.enemies.length) return lastAim;
-  const closestIdx = state.enemies.indexOf(findClosestEnemy());
-  let bestAng = lastAim, bestScore = -1, bestHasClosest = false, bestFirst = Infinity;
-  for (let d = 0; d < 360; d += AIM.stepDeg) {
-    const a = d * Math.PI / 180;
-    const r = simulateHits(a);
-    const score = r.hits.size;
-    const hasClosest = r.hits.has(closestIdx);
-    const better =
-      (hasClosest && !bestHasClosest) ||                                            // (1) ưu tiên cứng: trúng enemy gần nhất
-      (hasClosest === bestHasClosest && score > bestScore) ||                       // (2) trong số đó: nhiều hit nhất
-      (hasClosest === bestHasClosest && score === bestScore && r.firstDist < bestFirst); // (3) chạm sớm nhất
-    if (better) { bestAng = a; bestScore = score; bestHasClosest = hasClosest; bestFirst = r.firstDist; }
-  }
-  return bestAng;
-}
-
-// Cập nhật hướng ngắm mỗi frame (gọi trong update)
-function updateAim() {
-  if (Game.autoPlay) { if (state.enemies.length) lastAim = bestAimAngle(); }
-  else { lastAim = Math.atan2(mouse.y - state.player.y, mouse.x - state.player.x); }
+  lastAim = Math.atan2(mouse.y - state.player.y, mouse.x - state.player.x);
+  return lastAim;
 }
 
 
@@ -190,7 +122,7 @@ function spawnEnemy() {
 /* ---------------- BẮN ĐẠN ---------------- */
 function fire() {
   const P = state.player.stats;
-  const baseAng = lastAim; // hướng ngắm đã được updateAim() tính ở đầu frame
+  const baseAng = aimAngle();
   const n = P.bulletCount;
   const spreadRad = P.bulletSpread * Math.PI / 180;
   for (let i = 0; i < n; i++) {
@@ -198,11 +130,10 @@ function fire() {
     const ang = baseAng + offset;
     state.bullets.push({
       x: state.player.x, y: state.player.y,
-      px: state.player.x, py: state.player.y, // vị trí frame trước (để tính điểm va chạm khi nảy)
       vx: Math.cos(ang) * P.bulletSpeed, vy: Math.sin(ang) * P.bulletSpeed,
       radius: 6, damage: P.bulletDamage,
-      pierceLeft: P.bulletPierce,  // nảy vô hạn; pierce = số lần đi thẳng xuyên qua
-      alive: true, bounceCount: 0, hitSet: new Set(),
+      bouncesLeft: P.bulletBounces, pierceLeft: P.bulletPierce,
+      life: P.bulletLifetime, hitSet: new Set(),
     });
   }
 }
@@ -210,28 +141,12 @@ function fire() {
 
 /* ---------------- VA CHẠM / HIỆU ỨNG ---------------- */
 function reflect(b, e) {
-  // Tính pháp tuyến tại ĐIỂM VA CHẠM THỰC trên rìa enemy (không dùng vị trí đã lún vào trong).
-  // Tìm giao điểm của đoạn [vị trí frame trước -> vị trí hiện tại] với vòng tròn bán kính R.
-  const R = e.radius + b.radius;
-  const ax = b.px, ay = b.py;             // điểm đầu đoạn (ngoài enemy)
-  const dx = b.x - ax, dy = b.y - ay;     // vector di chuyển trong frame
-  const fx = ax - e.x, fy = ay - e.y;
-  const A = dx * dx + dy * dy;
-  const B = 2 * (fx * dx + fy * dy);
-  const C = fx * fx + fy * fy - R * R;
-  const disc = B * B - 4 * A * C;
-  let cx, cy;
-  let t = (A > 0 && disc >= 0) ? (-B - Math.sqrt(disc)) / (2 * A) : -1;
-  if (t >= 0 && t <= 1) { cx = ax + dx * t; cy = ay + dy * t; } // điểm chạm chính xác
-  else { cx = b.x; cy = b.y; }                                  // fallback hiếm gặp
-  let nx = cx - e.x, ny = cy - e.y;
+  let nx = b.x - e.x, ny = b.y - e.y;
   const len = Math.hypot(nx, ny) || 1; nx /= len; ny /= len;
-  // phản xạ gương: góc tới = góc phản xạ quanh pháp tuyến tại điểm chạm
   const dot = b.vx * nx + b.vy * ny;
   b.vx -= 2 * dot * nx; b.vy -= 2 * dot * ny;
-  // đặt đạn về đúng điểm chạm rồi đẩy ra ngoài rìa 1 chút để không kẹt
-  b.x = e.x + nx * (R + 0.5);
-  b.y = e.y + ny * (R + 0.5);
+  b.x = e.x + nx * (e.radius + b.radius + 1);
+  b.y = e.y + ny * (e.radius + b.radius + 1);
 }
 function damageEnemy(e, dmg) { e.hp -= dmg; e.hitFlash = 0.08; }
 
@@ -262,28 +177,37 @@ function spawnExplosion(x, y, color) {
 }
 
 
-/* ---------------- NÂNG CẤP ----------------
-   Set dùng cho level được CHỌN TRONG MÀN EDIT (Store.activeSetId).
-   Lúc chơi KHÔNG hỏi set; mỗi lần đủ điểm thì random upgrade trong set đó. */
+/* ---------------- NÂNG CẤP: chọn SET trước, rồi chọn UPGRADE ---------------- */
 function upgradesInSet(set) {
   // Trả về các upgrade trong set chưa đạt maxLevel
   return (set.upgradeIds || [])
     .map(id => Store.getUpgrade(id))
     .filter(u => u && (u.maxLevel === null || (state.upgradeLevels[u.id] || 0) < u.maxLevel));
 }
+function setHasChoices(set) { return upgradesInSet(set).length > 0; }
 
-// LÊN CẤP: random 'choices' upgrade trong SET đang dùng cho level
-function levelUp() {
-  const set = state.chosenSet;
-  // Không còn upgrade khả dụng trong set -> đẩy ngưỡng lên để khỏi hiện bảng trống
-  if (!set || upgradesInSet(set).length === 0) {
-    state.nextUpgradeAt += Store.balance.upgrade.baseCost + Store.balance.upgrade.costStep * (state.upgradesTaken + 1);
-    return;
-  }
-  offerUpgrades(set);
-}
-function offerUpgrades(set) {
+// Bước 1: hiện danh sách SET
+function offerSets() {
+  const sets = Store.sets.filter(setHasChoices);
+  if (sets.length === 0) return false; // hết upgrade khả dụng -> bỏ qua lên cấp
   state.paused = true;
+  const wrap = document.getElementById('setCards');
+  wrap.innerHTML = '';
+  sets.forEach(set => {
+    const div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = `<div class="ico">${set.ico || '📦'}</div>
+                     <div class="name">${set.name}</div>
+                     <div class="desc">Chọn ${set.choices} nâng cấp trong nhánh này</div>`;
+    div.onclick = () => { document.getElementById('setOverlay').classList.remove('show'); offerUpgrades(set); };
+    wrap.appendChild(div);
+  });
+  document.getElementById('setOverlay').classList.add('show');
+  return true;
+}
+
+// Bước 2: hiện 'choices' upgrade trong set đã chọn
+function offerUpgrades(set) {
   const pool = upgradesInSet(set).slice();
   const picks = [];
   const n = Math.max(1, set.choices || 3);
@@ -327,8 +251,9 @@ function gameOver() {
 }
 function restart() {
   document.getElementById('gameoverOverlay').classList.remove('show');
+  document.getElementById('setOverlay').classList.remove('show');
   document.getElementById('upgradeOverlay').classList.remove('show');
-  initState(); lastTime = performance.now(); // chơi ngay, đợi đủ điểm mới có upgrade
+  initState(); lastTime = performance.now();
 }
 document.getElementById('restartBtn').onclick = restart;
 
@@ -337,8 +262,6 @@ document.getElementById('restartBtn').onclick = restart;
 function update(dt) {
   state.elapsed += dt;
 
-  updateAim(); // tính hướng ngắm (auto-play tối ưu nảy / hoặc theo chuột)
-
   state.player.fireTimer -= dt;
   if (state.player.fireTimer <= 0) { fire(); state.player.fireTimer = state.player.stats.fireCooldown; }
 
@@ -346,10 +269,9 @@ function update(dt) {
   if (state.spawnTimer <= 0) { spawnEnemy(); state.spawnTimer = currentSpawnInterval(state.elapsed); }
 
   for (const b of state.bullets) {
-    b.px = b.x; b.py = b.y;             // lưu vị trí trước khi di chuyển (cho reflect)
-    b.x += b.vx * dt; b.y += b.vy * dt;
-    // Đạn nảy VÔ HẠN khi trúng enemy; chỉ biến mất khi chạm tường.
-    if (b.x < 0 || b.x > VW || b.y < 0 || b.y > VH) { b.alive = false; }
+    b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
+    if (b.x < 0 || b.x > VW) { b.vx *= -1; b.x = Math.max(0, Math.min(VW, b.x)); }
+    if (b.y < 0 || b.y > VH) { b.vy *= -1; b.y = Math.max(0, Math.min(VH, b.y)); }
   }
 
   for (const e of state.enemies) {
@@ -371,25 +293,21 @@ function update(dt) {
       if (Math.hypot(b.x - e.x, b.y - e.y) < b.radius + e.radius) {
         damageEnemy(e, b.damage); applyHitEffects(e); b.hitSet.add(e);
         if (e.hp <= 0) { e.dead = true; onEnemyKilled(e); }
-        if (b.pierceLeft > 0) {
-          b.pierceLeft--;                 // đi thẳng xuyên qua enemy này
-        } else {
-          reflect(b, e);                  // nảy (vô hạn) — góc tới = góc phản xạ
-          b.hitSet.clear(); b.hitSet.add(e); // sau khi nảy được phép trúng enemy khác
-          if (++b.bounceCount > 300) b.alive = false; // van an toàn chống kẹt vô hạn (gần như không bao giờ chạm)
-        }
+        if (b.pierceLeft > 0) { b.pierceLeft--; }
+        else if (b.bouncesLeft > 0) { reflect(b, e); b.bouncesLeft--; b.hitSet.clear(); b.hitSet.add(e); }
+        else { b.life = 0; }
         break;
       }
     }
   }
 
-  state.bullets = state.bullets.filter(b => b.alive);
+  state.bullets = state.bullets.filter(b => b.life > 0);
   state.enemies = state.enemies.filter(e => !e.dead);
   for (const p of state.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }
   state.particles = state.particles.filter(p => p.life > 0);
 
-  // Đủ điểm -> lên cấp: random upgrade trong set đã chọn
-  if (state.score >= state.nextUpgradeAt) { levelUp(); }
+  // Đủ điểm -> lên cấp: hiện SET trước
+  if (state.score >= state.nextUpgradeAt) { offerSets(); }
 }
 
 

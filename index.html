@@ -48,11 +48,7 @@
   input.num { width:100%; }
   textarea.json { width:100%; resize:vertical; }
 
-  .active-set { display:flex; align-items:center; gap:8px; margin:10px 0; font-weight:600; }
   .edit-card { border:1px solid var(--line); border-radius:12px; padding:14px; margin-top:12px; background:#fcfdff; }
-  .edit-card.active { border-color:var(--blue); box-shadow:0 0 0 2px rgba(76,141,255,.18); }
-  .active-badge { display:inline-block; background:var(--blue); color:#fff; font-size:12px; font-weight:700;
-    padding:3px 10px; border-radius:20px; margin-bottom:8px; }
   .eff-row { display:flex; flex-wrap:wrap; align-items:flex-end; gap:8px; margin:6px 0;
     padding:8px; background:#f2f5fb; border-radius:8px; }
   .eff-row .field { min-width:120px; }
@@ -90,6 +86,7 @@
   .card .name { font-size:18px; font-weight:700; margin:4px 0 2px; }
   .card .desc { font-size:14px; color:var(--muted); line-height:1.35; }
   .card .lvl { font-size:12px; color:var(--blue); font-weight:700; margin-top:6px; }
+  .card .desc .hl { font-weight:800; color:#1a1d24; background:#fff3bf; padding:0 4px; border-radius:4px; }
   .btn { margin-top:8px; background:var(--blue); color:#fff; border:none; font-size:18px; font-weight:700;
     padding:14px 28px; border-radius:12px; cursor:pointer; }
 </style>
@@ -97,10 +94,10 @@
 <body>
 <div id="app">
   <nav id="topbar">
-    <div class="brand">🌀 Shuriken Prototype</div>
+    <div class="brand">Shuriken Prototype</div>
     <div class="tabs">
-      <button id="tabPlay" class="tab">▶ Play</button>
-      <button id="tabEdit" class="tab">✎ Edit + Balance</button>
+      <button id="tabPlay" class="tab">Play</button>
+      <button id="tabEdit" class="tab">Edit + Balance</button>
     </div>
   </nav>
 
@@ -108,7 +105,7 @@
   <div id="playScreen">
     <div id="playBar">
       <button id="autoToggle"></button>
-      <button id="replayBtn">↻ Chơi lại</button>
+      <button id="replayBtn">Chơi lại</button>
     </div>
     <div id="wrap"><canvas id="game"></canvas></div>
   </div>
@@ -118,11 +115,20 @@
 </div>
 
 <!-- ============ OVERLAYS ============ -->
-<!-- Chọn UPGRADE (set của level đã đặt sẵn trong màn Edit) -->
-<div class="overlay" id="upgradeOverlay">
+<!-- Chọn vũ khí trước trận -->
+<div class="overlay" id="weaponOverlay">
   <div class="panel">
-    <h1>Chọn nâng cấp</h1>
-    <div class="cards" id="upgradeCards"></div>
+    <h1>Chọn vũ khí</h1>
+    <p>Mỗi vũ khí có skill khởi đầu, passive và ultimate riêng.</p>
+    <div class="cards" id="weaponCards"></div>
+  </div>
+</div>
+<!-- Lên cấp: chọn 1 trong 3 skill -->
+<div class="overlay" id="levelupOverlay">
+  <div class="panel">
+    <h1>Lên cấp!</h1>
+    <p>Chọn 1 trong 3 kỹ năng.</p>
+    <div class="cards" id="levelupCards"></div>
   </div>
 </div>
 <!-- Thua -->
@@ -135,15 +141,56 @@
 </div>
 
 <!-- ============================================================
-     Thứ tự nạp QUAN TRỌNG:
-       1) config.js  -> dữ liệu mặc định + schema
-       2) data.js    -> Store (lưu/tải), diễn giải hiệu ứng, helper scaling
-       3) game.js    -> engine màn Play (auto-play, set→upgrade)
-       4) editor.js  -> màn Edit + điều hướng tab (nạp cuối cùng)
+     Thứ tự nạp QUAN TRỌNG (module theo domain — kiểu dự án RPG).
+     Mỗi script là toàn cục (KHÔNG dùng ES module), nên thứ tự phải đúng:
+
+     ── Dữ liệu ──────────────────────────────────────────────
+       config.js   -> BALANCE, ELEMENT_COLORS, DEFAULT_SKILLS
+       data.js     -> Store (lưu/tải), helper scaling, expForLevel()
+
+     ── Engine màn Play ──────────────────────────────────────
+       canvas.js   -> VW/VH, canvas, ctx, resize()
+       input.js    -> mouse + listeners (ngắm tay khi tắt auto)
+       state.js    -> Game{}, state, freshPlayerStats(), initState()
+       skills.js   -> skillLvl/skillCur/learnSkill + chỉ số phái sinh
+       aim.js      -> findClosestEnemy(), aimAngle()
+       spawn.js    -> pickEnemyType(), spawnEnemy()
+       particles.js-> spawnExplosion()
+       combat.js   -> fire(), makeBullet(), windGust(), bulletHit()...
+       levelup.js  -> offerLevelUp() / chooseSkill() (chọn 1 trong 3)
+       lifecycle.js-> gameOver(), restart(), hideOverlays()
+       update.js   -> update(dt)
+       render.js   -> drawEnemy(), drawBullet(), render(), drawHUD()
+       loop.js     -> loop(), Game.start/stop, lastTime (cuối nhóm engine)
+
+     ── Màn Edit ─────────────────────────────────────────────
+       editor-dom.js      -> el(), numField(), txtField(), labeled()
+       editor-sections.js -> renderEditor() + Balance + Dữ liệu
+       nav.js             -> điều hướng tab + auto-play (nạp CUỐI CÙNG)
+
+     ⚠ game.js / editor.js cũ giữ làm backup, KHÔNG nạp nữa.
      ============================================================ -->
+<!-- Dữ liệu -->
 <script src="config.js"></script>
 <script src="data.js"></script>
-<script src="game.js"></script>
-<script src="editor.js"></script>
+<!-- Engine màn Play -->
+<script src="canvas.js"></script>
+<script src="input.js"></script>
+<script src="state.js"></script>
+<script src="skills.js"></script>
+<script src="weapons.js"></script>
+<script src="aim.js"></script>
+<script src="spawn.js"></script>
+<script src="particles.js"></script>
+<script src="combat.js"></script>
+<script src="levelup.js"></script>
+<script src="lifecycle.js"></script>
+<script src="update.js"></script>
+<script src="render.js"></script>
+<script src="loop.js"></script>
+<!-- Màn Edit -->
+<script src="editor-dom.js"></script>
+<script src="editor-sections.js"></script>
+<script src="nav.js"></script>
 </body>
 </html>
