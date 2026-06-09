@@ -78,6 +78,7 @@ function freshPlayerStats() {
 function initState() {
   state = {
     running: true, paused: false,
+    dying: false, deathTimer: 0,   // bị chạm -> đóng băng + đếm ngược rồi mới hiện pop-up thua
     elapsed: 0, score: 0, kills: 0,
     upgradesTaken: 0,
     nextUpgradeAt: Store.balance.upgrade.baseCost,
@@ -542,7 +543,13 @@ function chooseUpgrade(u) {
 
 
 /* ---------------- THUA / RESTART ---------------- */
-function gameOver() {
+// Bị chạm: chưa thua ngay — đóng băng cảnh + hiện dấu "!" rồi đếm ngược (update xử lý)
+function triggerDeath() {
+  if (state.dying) return;
+  state.dying = true; state.deathTimer = 2;
+}
+// Hết đếm ngược mới hiện pop-up thua
+function showGameOver() {
   state.running = false;
   const m = Math.floor(state.elapsed / 60), s = Math.floor(state.elapsed % 60);
   document.getElementById('gameoverStats').textContent =
@@ -559,6 +566,13 @@ document.getElementById('restartBtn').onclick = restart;
 
 /* ---------------- UPDATE ---------------- */
 function update(dt) {
+  // Đang chết: đóng băng cảnh, đếm ngược rồi mới hiện pop-up thua
+  if (state.dying) {
+    state.deathTimer -= dt;
+    if (state.deathTimer <= 0) showGameOver();
+    return;
+  }
+
   state.elapsed += dt;
 
   // Di chuyển nhân vật bằng WASD / phím mũi tên
@@ -619,7 +633,7 @@ function update(dt) {
       if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKilled(e); }
     }
     if (e.hitFlash > 0) e.hitFlash -= dt;
-    if (enemyHitsPlayer(e)) { gameOver(); return; }   // tetromino: kiểm từng ô
+    if (enemyHitsPlayer(e)) { triggerDeath(); return; }   // bị chạm -> bắt đầu đếm ngược thua
   }
 
   for (const b of state.bullets) {
@@ -627,6 +641,11 @@ function update(dt) {
       if (e.dead || b.hitSet.has(e)) continue;
       const col = collideBulletEnemy(b, e);   // vòng tròn hoặc từng ô khối tetromino
       if (col) {
+        // Cyclone "thổi chệch": đạn THẲNG (không xuyên) bị đẩy đi không gây dmg; đạn xuyên/gió bỏ qua
+        if (e.deflect && b.pierceLeft <= 0 && Math.random() < e.deflect) {
+          if (col.circle) reflect(b, e); else reflectCell(b, col);
+          b.hitSet.add(e); break;
+        }
         const fx = state.player.stats.fx;
         // Chí mạng (hỗ trợ): % gấp đôi sát thương
         let dmg = b.damage;
@@ -679,7 +698,10 @@ function update(dt) {
   for (const pu of state.puddles) {
     pu.remaining -= dt;
     for (const e of state.enemies) {
-      if (!e.dead && Math.hypot(e.x - pu.x, e.y - pu.y) <= pu.r) { e.slowTimer = Math.max(e.slowTimer, 0.12); e.slowFactor = pu.slowFactor; }
+      if (!e.dead && Math.hypot(e.x - pu.x, e.y - pu.y) <= pu.r) {
+        e.slowTimer = Math.max(e.slowTimer, 0.12); e.slowFactor = pu.slowFactor;
+        if (e.mudWeak) { damageEnemy(e, e.mudWeak * dt); if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKilled(e); } } // Golem ăn thêm dmg trong bùn
+      }
     }
   }
   state.puddles = state.puddles.filter(p => p.remaining > 0);
@@ -781,6 +803,7 @@ function drawEnemy(e) {
   if (e.isBoss) {
     if (e.shape === 'star') drawPoly(r, 5, true);
     else if (e.shape === 'octagon') drawPoly(r, 8, false);
+    else if (e.shape === 'diamond') drawPoly(r, 4, false);  // hình thoi (4 đỉnh: trên/phải/dưới/trái)
     else drawPoly(r, 6, false);   // hexagon mặc định
   }
   else if (e.shape === 'tetromino') {
@@ -854,6 +877,18 @@ function render() {
   ctx.beginPath(); ctx.moveTo(state.player.x, state.player.y);
   ctx.lineTo(state.player.x + Math.cos(aim)*state.player.radius, state.player.y + Math.sin(aim)*state.player.radius);
   ctx.lineWidth = 4; ctx.stroke();
+
+  // Bị chạm: dấu "!" đỏ + viền nhấp nháy quanh nhân vật (chưa hiện pop-up thua)
+  if (state.dying) {
+    const px = state.player.x, py = state.player.y;
+    ctx.strokeStyle = '#ff2d2d'; ctx.lineWidth = 4;
+    ctx.globalAlpha = 0.55 + 0.45 * Math.abs(Math.sin(state.deathTimer * 10));
+    ctx.beginPath(); ctx.arc(px, py, state.player.radius + 6, 0, Math.PI*2); ctx.stroke();
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = '#ff2d2d'; ctx.font = 'bold 56px sans-serif'; ctx.textAlign = 'center';
+    ctx.fillText('!', px, py - state.player.radius - 14);
+    ctx.textAlign = 'left';
+  }
 
   drawHUD();
 }
@@ -949,10 +984,15 @@ function loop(now) {
   let dt = (now - lastTime) / 1000; lastTime = now;
   dt = Math.min(dt, 0.05);
   if (Game.active && state) {
-    if (state.running && !state.paused) update(dt);
-    render();
-    debugAccum += dt;
-    if (debugAccum >= 0.1) { renderDebug(); debugAccum = 0; }
+    // Chống sập: 1 frame lỗi sẽ log ra Console nhưng KHÔNG giết vòng lặp (hết trắng màn)
+    try {
+      if (state.running && !state.paused) update(dt);
+      render();
+      debugAccum += dt;
+      if (debugAccum >= 0.1) { renderDebug(); debugAccum = 0; }
+    } catch (err) {
+      console.error('[loop] lỗi 1 frame (đã bỏ qua, game vẫn chạy):', err);
+    }
   }
   requestAnimationFrame(loop);
 }

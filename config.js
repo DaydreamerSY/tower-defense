@@ -77,7 +77,10 @@ const DEFAULT_BALANCE = {
 const MINIBOSS_TYPES = [
   { id:'slime',  name:'Slime',  shape:'hexagon', baseHp:90,  baseSpeed:30,  radius:42, color:'#7bdcb5', score:25, absorb:true },
   { id:'tesla',  name:'Tesla',  shape:'star',    baseHp:120, baseSpeed:36,  radius:40, color:'#ffe14d', score:30, insulate:0.4 },
-  { id:'golem',  name:'Golem',  shape:'octagon', baseHp:100, baseSpeed:105, radius:38, color:'#b07a45', score:30 },
+  // Golem: lao nhanh, trâu. mudWeak = đứng trong vũng bùn ăn thêm dmg/giây -> khắc bằng Đất/khống chế.
+  { id:'golem',  name:'Golem',  shape:'octagon', baseHp:100, baseSpeed:105, radius:38, color:'#6b4423', score:30, mudWeak:4 },
+  // Cyclone (boss mới): 'deflect' = % thổi chệch đạn THẲNG (đạn xuyên/gió bỏ qua) -> ưu build xuyên/gió.
+  { id:'cyclone', name:'Cyclone', shape:'diamond', baseHp:80, baseSpeed:48, radius:38, color:'#38d9c0', score:30, deflect:0.4 },
 ];
 
 

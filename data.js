@@ -224,5 +224,6 @@ function makeMinibossStats(typeKey, elapsed) {
     hp:    Math.round(t.baseHp * hpMul),
     speed: t.baseSpeed * spMul,
     isBoss: true, absorb: !!t.absorb, insulate: t.insulate || 1,
+    mudWeak: t.mudWeak || 0, deflect: t.deflect || 0,
   };
 }
