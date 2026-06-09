@@ -19,6 +19,7 @@ function fire() {
     state.bullets.push(makeBullet(baseAng + offset, speed, P));
     state.shotCount++;
     if (w2 && state.shotCount % w2.every === 0) windGust(w2.r);
+    runCustomSkills('everyShots', {}); // Skill Lab: trigger "Mỗi N phát"
   }
 }
 
@@ -169,6 +170,8 @@ function bulletHit(b, e) {
   const sp = skillCur('split');
   if (sp && !b.noSplit && Math.random() < sp.chance) spawnSplit(b, e);
 
+  runCustomSkills('onHit', { enemy: e, bullet: b }); // Skill Lab: trigger "Khi trúng"
+
   b.hitSet.add(e);
   if (e.hp <= 0 && !e.dead) { e.dead = true; onEnemyKilled(e); }
 }
@@ -222,6 +225,32 @@ function onBounce(b, e) {
 
   const wg = skillCur('wgust');     // Cuồng Phong: đẩy NHẸ kẻ thù quanh điểm nảy
   if (wg) pushEnemiesFrom(b.x, b.y, wg.r, wg.push);
+
+  runCustomSkills('onBounce', { enemy: e, bullet: b }); // Skill Lab: trigger "Khi nảy"
+}
+
+
+/* ---------------- SKILL LAB: engine diễn giải skill tự chế ---------------- */
+function runCustomSkills(trigger, ctx) {
+  for (const s of Store.skills) {
+    if (!s.custom || s.trigger !== trigger || !hasSkill(s.id)) continue;
+    if (trigger === 'everyShots') { if (state.shotCount % (s.every || 1) !== 0) continue; }
+    else { if (Math.random() >= (s.chance || 0)) continue; }
+    applyCustomEffect(s, ctx);
+  }
+}
+function applyCustomEffect(s, ctx) {
+  const p = s.params || {}, e = ctx.enemy;
+  const x = e ? e.x : state.player.x, y = e ? e.y : state.player.y;
+  switch (s.effect) {
+    case 'chain': chainLightning(e || { x, y }, p.count, p.dmg); break;
+    case 'burn':  if (e) e.burnStacks.push({ dps: p.dps, remaining: p.duration }); break;
+    case 'aoe':   aoeDamage(x, y, p.r, p.dmg); break;
+    case 'slow':  state.puddles.push({ x, y, r: p.r, slowFactor: p.factor, remaining: p.duration }); break;
+    case 'knockback':
+      if (e && ctx.bullet) { const L = Math.hypot(ctx.bullet.vx, ctx.bullet.vy) || 1; e.x += ctx.bullet.vx / L * p.knockback; e.y += ctx.bullet.vy / L * p.knockback; }
+      break;
+  }
 }
 
 // Khoảng cách từ điểm (px,py) tới đoạn thẳng (x1,y1)-(x2,y2) — cho vệt lửa capsule
@@ -281,6 +310,7 @@ function onEnemyKilled(enemy) {
     if (state.ultKills >= state.ultThreshold) state.ultReady = true;
   }
   if (enemy.belly && enemy.belly.length) releaseBelly(enemy); // Slime: nhả đạn đã ngậm
+  runCustomSkills('onKill', { enemy }); // Skill Lab: trigger "Khi hạ gục"
   spawnExplosion(enemy.x, enemy.y, enemy.color);
 }
 

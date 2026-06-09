@@ -70,6 +70,11 @@ const Store = {
 
   // Tìm skill theo id
   getSkill(id) { return this.skills.find(s => s.id === id); },
+
+  // Skill Lab: thêm skill tự chế
+  addCustomSkill(skill) { this.skills.push(skill); this.save(); },
+  // Xoá 1 skill (chỉ dùng cho custom)
+  removeSkill(id) { this.skills = this.skills.filter(s => s.id !== id); this.save(); },
 };
 Store.load();
 

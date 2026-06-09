@@ -35,14 +35,23 @@ function update(dt) {
     state.nextBossAt += Store.balance.miniboss.every;
   }
 
-  // Đạn bay (không còn giảm thời gian sống — đạn sống theo số lần nảy)
+  // Đạn bay (sống theo số lần nảy — chạm tường cũng TỐN 1 lượt; hết lượt là biến mất)
   for (const b of state.bullets) {
     b.px = b.x; b.py = b.y;             // lưu vị trí trước khi di chuyển (cho reflect chính xác)
     b.x += b.vx * dt; b.y += b.vy * dt;
-    if (b.x < 0 || b.x > VW) { b.vx *= -1; b.x = Math.max(0, Math.min(VW, b.x)); b.bounceCount++; }
-    if (b.y < 0 || b.y > VH) { b.vy *= -1; b.y = Math.max(0, Math.min(VH, b.y)); b.bounceCount++; }
-    // Earth Prison: đạn nảy lại vào trong vòng (không bay ra ngoài)
-    if (state.prison) {
+    // Tường màn hình
+    const hitX = b.x < 0 || b.x > VW, hitY = b.y < 0 || b.y > VH;
+    if (hitX || hitY) {
+      if (b.bouncesLeft > 0) {           // còn lượt -> nảy, tốn 1 lượt
+        if (hitX) { b.vx *= -1; b.x = Math.max(0, Math.min(VW, b.x)); }
+        if (hitY) { b.vy *= -1; b.y = Math.max(0, Math.min(VH, b.y)); }
+        b.bouncesLeft--;
+      } else {                           // hết lượt -> chạm tường là biến mất
+        b.alive = false;
+      }
+    }
+    // Earth Prison (ult): nảy VÔ HẠN trong vòng — không tốn lượt
+    if (b.alive && state.prison) {
       const pr = state.prison, dx = b.x - pr.x, dy = b.y - pr.y, d = Math.hypot(dx, dy);
       if (d > pr.r - b.radius && d > 0) {
         const nx = dx / d, ny = dy / d, dot = b.vx * nx + b.vy * ny;
@@ -51,8 +60,7 @@ function update(dt) {
         b.bounceCount++;
       }
     }
-    // Chốt an toàn: đạn nảy quá nhiều mà không trúng ai -> tự dọn (tránh tồn đọng vô hạn)
-    if (b.bounceCount > 50) b.alive = false;
+    if (b.bounceCount > 50) b.alive = false; // backstop cho Prison (nảy vô hạn trong vòng)
   }
 
   // Nảy đạn khỏi Tường Nảy (tính như 1 lần nảy, kích hiệu ứng on-bounce)

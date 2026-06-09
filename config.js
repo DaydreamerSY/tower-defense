@@ -77,11 +77,29 @@ const MINIBOSS_TYPES = [
 
   // Golem (hệ Đất): lao nhanh + trâu, đe doạ sống sót. Không kháng damage; khắc bằng KHỐNG CHẾ.
   // mudWeak: đứng trong vũng bùn ăn thêm dmg/giây -> Đất ghim & nghiền là khắc tinh sạch nhất.
-  { id:'golem', name:'Golem', shape:'octagon', baseHp:100, baseSpeed:115, radius:38, color:'#6b4423', exp:30, mudWeak:4 },
+  { id:'golem', name:'Golem', shape:'octagon', baseHp:80, baseSpeed:88, radius:38, color:'#6b4423', exp:30, mudWeak:4 },
 
   // Cyclone (hệ Gió): "thổi chệch" đạn bắn THẲNG (×deflect); đạn XUYÊN/gió đi thẳng -> ×pierceBonus.
   // DoT/AoE/sét đi đường riêng nên KHÔNG bị giảm -> nhiều build thắng được, Wind/pierce là tối ưu.
   { id:'cyclone', name:'Cyclone', shape:'diamond', baseHp:70, baseSpeed:45, radius:38, color:'#38d9c0', exp:30, deflect:0.4, pierceBonus:2 },
+];
+
+
+/* ---------------------------------------------------------------------------
+   SKILL LAB — schema block để tự chế skill (Trigger -> Tỉ lệ -> Effect)
+   --------------------------------------------------------------------------- */
+const TRIGGER_DEFS = [
+  { key:'onHit',     label:'Khi trúng' },
+  { key:'onBounce',  label:'Khi nảy' },
+  { key:'onKill',    label:'Khi hạ gục' },
+  { key:'everyShots',label:'Mỗi N phát bắn' },
+];
+const EFFECT_DEFS = [
+  { key:'chain',     label:'Lan sét',   params:[ {k:'count',label:'Số mục tiêu',def:2}, {k:'dmg',label:'Sát thương',def:1} ] },
+  { key:'burn',      label:'Bỏng',      params:[ {k:'dps',label:'Dmg/giây',def:1}, {k:'duration',label:'Thời gian (s)',def:4} ] },
+  { key:'aoe',       label:'Nổ AoE',    params:[ {k:'r',label:'Bán kính',def:70}, {k:'dmg',label:'Sát thương',def:2} ] },
+  { key:'slow',      label:'Vũng chậm', params:[ {k:'r',label:'Bán kính',def:70}, {k:'factor',label:'Hệ số chậm',def:0.5}, {k:'duration',label:'Thời gian (s)',def:3} ] },
+  { key:'knockback', label:'Đẩy lùi',   params:[ {k:'knockback',label:'Đẩy (px)',def:40} ] },
 ];
 
 

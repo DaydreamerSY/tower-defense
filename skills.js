@@ -77,11 +77,22 @@ function bulletSecondaryColor(elements) {
 
 /* ---------------- NHÃN & MÔ TẢ (cho thẻ chọn skill) ---------------- */
 function elementLabel(element) {
-  return ({ fire:'Hệ Lửa', wind:'Hệ Gió', earth:'Hệ Đất', electric:'Hệ Điện', support:'Phụ trợ' })[element] || '';
+  return ({ fire:'Hệ Lửa', wind:'Hệ Gió', earth:'Hệ Đất', electric:'Hệ Điện', support:'Phụ trợ', custom:'Tự chế' })[element] || '';
+}
+
+// Mô tả skill tự chế (Skill Lab) từ trigger + tỉ lệ + effect + params
+function describeCustomSkill(s) {
+  const trig = (TRIGGER_DEFS.find(t => t.key === s.trigger) || {}).label || s.trigger;
+  const eff = EFFECT_DEFS.find(e => e.key === s.effect) || { label: s.effect, params: [] };
+  const p = s.params || {};
+  const parts = eff.params.map(pr => `${pr.label} ${p[pr.k]}`).join(', ');
+  const when = s.trigger === 'everyShots' ? `Mỗi ${s.every} phát` : `${trig} (${Math.round((s.chance || 0) * 100)}%)`;
+  return `${when} → ${eff.label}${parts ? ' (' + parts + ')' : ''}.`;
 }
 
 // Mô tả cụ thể theo mốc 'level' sắp nhận (1-based)
 function describeSkill(s, level) {
+  if (s.custom) return describeCustomSkill(s);   // skill tự chế (data-driven)
   const L = s.levels[level - 1];
   if (!L) return s.desc;
   const P = s.levels[level - 2] || null; // mốc hiện tại (null nếu đang là MỚI)

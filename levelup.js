@@ -7,7 +7,9 @@
 
 // Skill đủ điều kiện hiện trong pool: chưa max + đã có skill yêu cầu (requires) nếu có
 function skillAvailable(s) {
-  return skillLvl(s.id) < s.maxLevel && (!s.requires || skillLvl(s.requires) > 0);
+  return s.enabled !== false                                  // pool: bật/tắt trong Skill Lab
+    && skillLvl(s.id) < s.maxLevel
+    && (!s.requires || skillLvl(s.requires) > 0);
 }
 
 // Lên cấp: bốc trong TẤT CẢ skill khả dụng

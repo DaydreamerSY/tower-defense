@@ -31,7 +31,17 @@
     cursor:crosshair; touch-action:none; }
 
   /* ===== Edit screen ===== */
-  #editScreen { flex:1 1 auto; overflow-y:auto; padding:18px; display:none; }
+  #editScreen, #labScreen { flex:1 1 auto; overflow-y:auto; padding:18px; display:none; }
+  /* Skill Lab blocks (Scratch-style) */
+  .lab-block { border-radius:12px; padding:10px 12px; margin:10px 0; color:#fff; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+  .lab-block .lab-tag { font-weight:800; font-size:12px; letter-spacing:.5px; opacity:.9; min-width:78px; }
+  .lab-block .lab-body { display:flex; gap:10px; align-items:flex-end; flex-wrap:wrap; }
+  .lab-block .field span { color:#fff; }
+  .blk-trigger { background:#e8842b; }
+  .blk-chance  { background:#2f8de0; }
+  .blk-effect  { background:#8a5cf0; }
+  .lab-skill { display:flex; align-items:center; justify-content:space-between; gap:10px; padding:6px 8px; border-bottom:1px solid var(--line); }
+  .lab-skill-main { display:flex; align-items:center; gap:8px; font-size:14px; }
   .card-block { max-width:860px; margin:0 auto 18px; background:var(--panel); border-radius:14px; padding:18px 20px; }
   .card-block h2 { margin:0 0 4px; font-size:20px; }
   .card-block h3 { margin:16px 0 6px; font-size:14px; color:var(--muted); text-transform:uppercase; letter-spacing:.4px; }
@@ -97,6 +107,7 @@
     <div class="brand">Shuriken Prototype</div>
     <div class="tabs">
       <button id="tabPlay" class="tab">Play</button>
+      <button id="tabLab" class="tab">Skill Lab</button>
       <button id="tabEdit" class="tab">Edit + Balance</button>
     </div>
   </nav>
@@ -109,6 +120,9 @@
     </div>
     <div id="wrap"><canvas id="game"></canvas></div>
   </div>
+
+  <!-- ============ SKILL LAB SCREEN ============ -->
+  <div id="labScreen"><div id="labRoot"></div></div>
 
   <!-- ============ EDIT SCREEN ============ -->
   <div id="editScreen"><div id="editRoot"></div></div>
@@ -191,6 +205,7 @@
 <!-- Màn Edit -->
 <script src="editor-dom.js"></script>
 <script src="editor-sections.js"></script>
+<script src="skill-lab.js"></script>
 <script src="nav.js"></script>
 </body>
 </html>
