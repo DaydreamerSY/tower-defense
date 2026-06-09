@@ -131,6 +131,42 @@ const DEFAULT_UPGRADES = [
 
   { id:'windpulse', name:'Luồng gió', ico:'🌪️', desc:'Mỗi 40 phát bắn tạo luồng gió đẩy enemy quanh người.', maxLevel:3,
     effects:[ { kind:'fx', fx:'windpulse', every:40, r:240 } ] },
+
+  // ----- Skill "đạn nguyên tố" (xác suất mỗi viên) -----
+  { id:'fireshot', name:'Đạn lửa', ico:'🔥', desc:'15% viên đạn gây thêm sát thương.', maxLevel:5,
+    effects:[ { kind:'fx', fx:'fireshot', chance:0.15, bonus:1 } ] },
+  { id:'windshot', name:'Đạn gió', ico:'🍃', desc:'15% viên đạn xuyên thêm 1 enemy.', maxLevel:5,
+    effects:[ { kind:'fx', fx:'windshot', chance:0.15, pierce:1 } ] },
+  { id:'earthshot', name:'Đạn đất', ico:'⛰️', desc:'15% viên tạo vũng bùn làm chậm khi trúng.', maxLevel:5,
+    effects:[ { kind:'fx', fx:'earthshot', chance:0.15, r:70, slowFactor:0.5, duration:3 } ] },
+  { id:'lightningshot', name:'Đạn sét', ico:'⚡', desc:'15% viên hóa sét lan sang enemy gần khi trúng.', maxLevel:5,
+    effects:[ { kind:'fx', fx:'lightningshot', chance:0.15, chain:2, dmg:1 } ] },
+
+  // ----- Skill "khi nảy" -----
+  { id:'fbounce', name:'Nổ lửa khi nảy', ico:'💥', desc:'Mỗi lần nảy gây nổ lửa quanh điểm nảy.', maxLevel:5,
+    effects:[ { kind:'fx', fx:'fbounce', r:60, dmg:1 } ] },
+  { id:'ftrail', name:'Vệt lửa', ico:'🌋', desc:'Mỗi lần nảy để lại vùng lửa đốt enemy.', maxLevel:5,
+    effects:[ { kind:'fx', fx:'ftrail', r:22, dps:1, duration:2.5 } ] },
+  { id:'wgust', name:'Gió khi nảy', ico:'🌬️', desc:'Mỗi lần nảy tạo luồng gió đẩy enemy quanh điểm nảy.', maxLevel:5,
+    effects:[ { kind:'fx', fx:'wgust', r:100 } ] },
+  { id:'ebounce', name:'Đá nặng', ico:'🪨', desc:'Mỗi lần nảy viên đạn +1 sát thương.', maxLevel:5,
+    effects:[ { kind:'fx', fx:'ebounce', dmg:1 } ] },
+  { id:'elbounce', name:'Tia lửa điện', ico:'✨', desc:'Mỗi lần nảy phóng sét sang enemy gần.', maxLevel:5,
+    effects:[ { kind:'fx', fx:'elbounce', chain:1, dmg:1 } ] },
+  { id:'wbounce', name:'Gió đẩy đạn', ico:'💨', desc:'Mỗi lần nảy viên đạn tăng tốc 12%.', maxLevel:4,
+    effects:[ { kind:'fx', fx:'wbounce', speedup:0.12 } ] },
+
+  // ----- Skill hỗ trợ -----
+  { id:'crit', name:'Chí mạng', ico:'🎯', desc:'10% đòn trúng gây gấp đôi sát thương.', maxLevel:5,
+    effects:[ { kind:'fx', fx:'crit', chance:0.10 } ] },
+  { id:'overload', name:'Quá tải', ico:'⚡', desc:'Trúng enemy đang tê liệt sẽ nổ điện diện rộng.', maxLevel:4,
+    effects:[ { kind:'fx', fx:'overload', r:80, dmg:2 } ] },
+  { id:'split', name:'Phân thân', ico:'🔀', desc:'33% khi trúng, viên đạn tách làm đôi.', maxLevel:1,
+    effects:[ { kind:'fx', fx:'split', chance:0.33 } ] },
+  { id:'scoreboost', name:'Bội điểm', ico:'⭐', desc:'+10% điểm nhận khi hạ enemy.', maxLevel:5,
+    effects:[ { kind:'fx', fx:'scoreboost', gain:0.10 } ] },
+  { id:'wall', name:'Tường chắn', ico:'🧱', desc:'Định kỳ tạo tường: chặn enemy & đạn nảy thêm.', maxLevel:5,
+    effects:[ { kind:'fx', fx:'wall', count:1, duration:6, cooldown:6 } ] },
 ];
 
 
@@ -157,8 +193,27 @@ const DEFAULT_SETS = [
   { id:'utility', name:'Hỗ trợ', ico:'✨', choices:3,
     upgradeIds:['pierce','spread','bulletspeed','firerate','movespeed'] },
 
-  { id:'element', name:'Nguyên tố', ico:'🔮', choices:3,
-    upgradeIds:['chain','stun','aura','knockback','windpulse','burn'] },
+  { id:'fire', name:'Hệ Lửa', ico:'🔥', choices:3,
+    upgradeIds:['burn','fireshot','fbounce','ftrail','aoe'] },
+
+  { id:'wind', name:'Hệ Gió', ico:'🍃', choices:3,
+    upgradeIds:['windshot','windpulse','wgust','wbounce','pierce','spread'] },
+
+  { id:'earth', name:'Hệ Đất', ico:'⛰️', choices:3,
+    upgradeIds:['slow','earthshot','knockback','ebounce'] },
+
+  { id:'electric', name:'Hệ Điện', ico:'⚡', choices:3,
+    upgradeIds:['chain','stun','aura','overload','lightningshot','elbounce'] },
+
+  { id:'support', name:'Hỗ trợ+', ico:'✨', choices:3,
+    upgradeIds:['crit','split','scoreboost','wall','firerate','multishot','movespeed','bulletspeed'] },
+
+  // Set tổng — bốc từ TẤT CẢ skill, để brainstrom tự do nhất
+  { id:'all', name:'Tất cả skill', ico:'🎲', choices:3,
+    upgradeIds:['damage','multishot','firerate','bulletspeed','pierce','spread','movespeed',
+      'slow','burn','aoe','chain','stun','aura','knockback','windpulse',
+      'fireshot','windshot','earthshot','lightningshot','fbounce','ftrail','wgust','ebounce','elbounce','wbounce',
+      'crit','overload','split','scoreboost','wall'] },
 ];
 
 
@@ -188,4 +243,19 @@ const FX_DEFS = [
   { key:'aura', label:'Điện trường', params:[ {k:'radius',label:'Bán kính',def:150}, {k:'dmg',label:'Dmg mỗi 0.5s',def:1} ] },
   { key:'knockback', label:'Đẩy lùi (đất)', params:[ {k:'force',label:'Lực đẩy',def:26} ] },
   { key:'windpulse', label:'Luồng gió', params:[ {k:'every',label:'Mỗi N phát',def:40}, {k:'r',label:'Bán kính',def:240} ] },
+  { key:'fireshot', label:'Đạn lửa', params:[ {k:'chance',label:'Tỉ lệ (0-1)',def:0.15}, {k:'bonus',label:'Dmg thêm',def:1} ] },
+  { key:'windshot', label:'Đạn gió', params:[ {k:'chance',label:'Tỉ lệ (0-1)',def:0.15}, {k:'pierce',label:'Xuyên thêm',def:1} ] },
+  { key:'earthshot', label:'Đạn đất (vũng bùn)', params:[ {k:'chance',label:'Tỉ lệ (0-1)',def:0.15}, {k:'r',label:'Bán kính',def:70}, {k:'slowFactor',label:'Hệ số chậm',def:0.5}, {k:'duration',label:'Thời gian (s)',def:3} ] },
+  { key:'lightningshot', label:'Đạn sét', params:[ {k:'chance',label:'Tỉ lệ (0-1)',def:0.15}, {k:'chain',label:'Số mục tiêu',def:2}, {k:'dmg',label:'Sát thương',def:1} ] },
+  { key:'fbounce', label:'Nổ lửa khi nảy', params:[ {k:'r',label:'Bán kính',def:60}, {k:'dmg',label:'Sát thương',def:1} ] },
+  { key:'ftrail', label:'Vệt lửa khi nảy', params:[ {k:'r',label:'Bán kính',def:22}, {k:'dps',label:'Dmg/giây',def:1}, {k:'duration',label:'Thời gian (s)',def:2.5} ] },
+  { key:'wgust', label:'Gió khi nảy', params:[ {k:'r',label:'Bán kính',def:100} ] },
+  { key:'ebounce', label:'Đá nặng (+dmg khi nảy)', params:[ {k:'dmg',label:'Dmg thêm',def:1} ] },
+  { key:'elbounce', label:'Tia lửa điện khi nảy', params:[ {k:'chain',label:'Số mục tiêu',def:1}, {k:'dmg',label:'Sát thương',def:1} ] },
+  { key:'wbounce', label:'Gió đẩy đạn (tăng tốc khi nảy)', params:[ {k:'speedup',label:'+Tốc mỗi nảy',def:0.12} ] },
+  { key:'crit', label:'Chí mạng (x2)', params:[ {k:'chance',label:'Tỉ lệ (0-1)',def:0.10} ] },
+  { key:'overload', label:'Quá tải (nổ khi tê liệt)', params:[ {k:'r',label:'Bán kính',def:80}, {k:'dmg',label:'Sát thương',def:2} ] },
+  { key:'split', label:'Phân thân đạn', params:[ {k:'chance',label:'Tỉ lệ (0-1)',def:0.33} ] },
+  { key:'scoreboost', label:'Bội điểm', params:[ {k:'gain',label:'+Điểm (tỉ lệ)',def:0.10} ] },
+  { key:'wall', label:'Tường chắn', params:[ {k:'count',label:'Số tường',def:1}, {k:'duration',label:'Thời gian (s)',def:6}, {k:'cooldown',label:'Hồi (s)',def:6} ] },
 ];
