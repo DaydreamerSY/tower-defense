@@ -19,9 +19,13 @@
    --------------------------------------------------------------------------- */
 const DEFAULT_BALANCE = {
 
+  // Kích thước map (toạ độ logic). To hơn = nhiều chỗ né hơn. Giữ tỉ lệ 9:16 cho khung dọc.
+  map: { width: 720, height: 1280 },
+
   // Chỉ số khởi đầu của người chơi
   player: {
     radius: 22,
+    moveSpeed: 280,       // px/giây khi di chuyển bằng WASD (0 = đứng yên)
     fireCooldown: 0.35,   // giây giữa 2 phát bắn (nhỏ hơn = bắn nhanh hơn)
     bulletSpeed: 480,     // px/giây
     bulletDamage: 1,      // dmg mỗi viên
@@ -37,6 +41,9 @@ const DEFAULT_BALANCE = {
     triangle: { shape: 'triangle', baseHp: 2, baseSpeed: 95, radius: 16, color: '#ff7a59', score: 1, weight: 4 },
     circle:   { shape: 'circle',   baseHp: 3, baseSpeed: 70, radius: 18, color: '#4c8dff', score: 2, weight: 3 },
     square:   { shape: 'square',   baseHp: 6, baseSpeed: 48, radius: 20, color: '#9b59ff', score: 3, weight: 2 },
+    // Khối Tetris (L/J/S/Z) — chọn ngẫu nhiên 1 hình mỗi lần spawn. Va chạm theo từng ô vuông.
+    // 'cell' = cạnh mỗi ô (px). Đạn nảy đúng theo mặt khối.
+    tetromino:{ shape: 'tetromino', baseHp: 9, baseSpeed: 40, cell: 14, color: '#2ec4b6', score: 4, weight: 2 },
   },
 
   // Scaling theo thời gian: enemy mạnh dần khi player sống lâu
@@ -97,6 +104,9 @@ const DEFAULT_UPGRADES = [
   { id:'bulletspeed', name:'Đạn nhanh',   ico:'💨', desc:'+20% tốc độ đạn.', maxLevel:4,
     effects:[ { kind:'stat', target:'bulletSpeed', op:'mul', value:1.2 } ] },
 
+  { id:'movespeed',  name:'Tốc chạy',     ico:'🏃', desc:'+15% tốc độ di chuyển.', maxLevel:5,
+    effects:[ { kind:'stat', target:'moveSpeed', op:'mul', value:1.15 } ] },
+
   { id:'slow',  name:'Làm chậm', ico:'🧊', desc:'Đạn làm enemy chậm 35% trong 2s.', maxLevel:1,
     effects:[ { kind:'fx', fx:'slow', factor:0.65, duration:2.0 } ] },
 
@@ -129,7 +139,7 @@ const DEFAULT_SETS = [
     upgradeIds:['slow','burn','aoe','pierce'] },
 
   { id:'utility', name:'Hỗ trợ', ico:'✨', choices:3,
-    upgradeIds:['pierce','spread','bulletspeed','firerate'] },
+    upgradeIds:['pierce','spread','bulletspeed','firerate','movespeed'] },
 ];
 
 
@@ -137,6 +147,7 @@ const DEFAULT_SETS = [
    SCHEMA cho màn Edit (để sinh dropdown). Bình thường không cần đụng.
    --------------------------------------------------------------------------- */
 const STAT_DEFS = [
+  { key:'moveSpeed',     label:'Tốc độ chạy' },
   { key:'fireCooldown',  label:'Hồi chiêu (s)' },
   { key:'bulletSpeed',   label:'Tốc độ đạn' },
   { key:'bulletDamage',  label:'Sát thương' },

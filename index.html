@@ -21,11 +21,23 @@
   .tab.active { background:var(--blue); color:#fff; }
 
   /* ===== Play screen ===== */
-  #playScreen { flex:1 1 auto; display:flex; flex-direction:column; align-items:center; min-height:0; }
-  #playBar { flex:0 0 auto; display:flex; gap:10px; padding:10px; }
+  #playScreen { flex:1 1 auto; display:flex; flex-direction:column; align-items:center; min-height:0; position:relative; }
+  #playBar { flex:0 0 auto; display:flex; gap:10px; padding:10px; flex-wrap:wrap; justify-content:center; }
   #playBar button { border:none; border-radius:10px; padding:8px 14px; font-size:14px; font-weight:600;
     cursor:pointer; background:#2f3440; color:#cfd5e0; }
   #autoToggle.on { background:#ffb84d; color:#3a2a00; }
+  #debugToggle.on { background:#34c759; color:#06310f; }
+
+  /* Panel debug: góc trên-trái khu vực Play */
+  #debugPanel {
+    position:absolute; top:64px; left:14px; z-index:10;
+    background:rgba(24,27,34,.86); color:#dfe4ec; border:1px solid #3a3f4b; border-radius:10px;
+    padding:10px 12px; font-family:ui-monospace,Menlo,Consolas,monospace; font-size:12px; line-height:1.5;
+    max-width:260px; pointer-events:none; box-shadow:0 6px 20px rgba(0,0,0,.4);
+  }
+  #debugPanel .dbg-title { font-weight:700; color:#fff; font-size:13px; margin-bottom:4px; }
+  #debugPanel .dbg-sec { color:#ffb84d; font-weight:700; margin-top:8px; border-top:1px solid #3a3f4b; padding-top:5px; }
+  #debugPanel .dbg-row { white-space:nowrap; }
   #wrap { flex:1 1 auto; display:flex; align-items:center; justify-content:center; min-height:0; }
   #game { background:#f7f8fa; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,.5);
     cursor:crosshair; touch-action:none; }
@@ -108,9 +120,11 @@
   <div id="playScreen">
     <div id="playBar">
       <button id="autoToggle"></button>
+      <button id="debugToggle"></button>
       <button id="replayBtn">↻ Chơi lại</button>
     </div>
     <div id="wrap"><canvas id="game"></canvas></div>
+    <div id="debugPanel"></div>
   </div>
 
   <!-- ============ EDIT SCREEN ============ -->

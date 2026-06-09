@@ -62,14 +62,22 @@ function renderEditor() {
 /* ---------------- BALANCE ---------------- */
 function sectionBalance() {
   const B = Store.balance;
+  if (!B.map) B.map = { width: 720, height: 1280 };  // an toàn cho dữ liệu cũ
   const sec = el('section', { class: 'card-block' }, [ el('h2', {}, '⚖️ Balance') ]);
+
+  // Map
+  sec.appendChild(el('h3', {}, 'Map (kích thước, nên giữ tỉ lệ 9:16)'));
+  const mg = el('div', { class: 'grid' });
+  mg.appendChild(labeled('Rộng (px)', numField(B.map, 'width', 10)));
+  mg.appendChild(labeled('Cao (px)', numField(B.map, 'height', 10)));
+  sec.appendChild(mg);
 
   // Player
   const p = B.player;
   sec.appendChild(el('h3', {}, 'Người chơi (chỉ số khởi đầu)'));
   const pg = el('div', { class: 'grid' });
-  [['fireCooldown','Hồi chiêu (s)',0.01],['bulletSpeed','Tốc độ đạn',10],['bulletDamage','Sát thương',1],
-   ['bulletCount','Số viên/nhịp',1],['bulletSpread','Góc xòe (độ)',1],['bulletPierce','Xuyên',1]]
+  [['moveSpeed','Tốc độ chạy',10],['fireCooldown','Hồi chiêu (s)',0.01],['bulletSpeed','Tốc độ đạn',10],
+   ['bulletDamage','Sát thương',1],['bulletCount','Số viên/nhịp',1],['bulletSpread','Góc xòe (độ)',1],['bulletPierce','Xuyên',1]]
     .forEach(([k,l,s]) => pg.appendChild(labeled(l, numField(p, k, s))));
   sec.appendChild(pg);
 
@@ -93,19 +101,22 @@ function sectionBalance() {
 
   // Enemy types table
   sec.appendChild(el('h3', {}, 'Enemy'));
+  sec.appendChild(el('p', { class: 'hint' }, 'Kích thước: bán kính (tròn/vuông/tam giác) hoặc cạnh mỗi ô (khối Tetris).'));
   const tbl = el('table', { class: 'etable' });
   tbl.appendChild(el('tr', {}, [
     el('th', {}, 'Loại'), el('th', {}, 'HP gốc'), el('th', {}, 'Tốc độ'),
-    el('th', {}, 'Điểm'), el('th', {}, 'Tỉ lệ ra'),
+    el('th', {}, 'Điểm'), el('th', {}, 'Tỉ lệ ra'), el('th', {}, 'Kích thước'),
   ]));
   Object.keys(B.enemyTypes).forEach(key => {
     const t = B.enemyTypes[key];
+    const sizeKey = (t.cell != null) ? 'cell' : 'radius';   // khối Tetris dùng 'cell', còn lại 'radius'
     tbl.appendChild(el('tr', {}, [
       el('td', {}, `${t.shape}`),
       el('td', {}, numField(t, 'baseHp', 1)),
       el('td', {}, numField(t, 'baseSpeed', 1)),
       el('td', {}, numField(t, 'score', 1)),
       el('td', {}, numField(t, 'weight', 1)),
+      el('td', {}, numField(t, sizeKey, 1)),
     ]));
   });
   sec.appendChild(tbl);
@@ -309,6 +320,15 @@ window.addEventListener('DOMContentLoaded', () => {
   }
   autoBtn.onclick = () => { Game.autoPlay = !Game.autoPlay; syncAuto(); };
   syncAuto();
+
+  // Nút bật/tắt panel debug
+  const dbgBtn = document.getElementById('debugToggle');
+  function syncDebug() {
+    dbgBtn.textContent = Game.showDebug ? '🐞 Debug: BẬT' : '🐞 Debug: TẮT';
+    dbgBtn.classList.toggle('on', Game.showDebug);
+  }
+  dbgBtn.onclick = () => { Game.showDebug = !Game.showDebug; syncDebug(); };
+  syncDebug();
 
   // Nút chơi lại nhanh trong thanh điều khiển
   document.getElementById('replayBtn').onclick = () => restart();

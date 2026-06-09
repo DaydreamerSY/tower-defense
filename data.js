@@ -31,6 +31,9 @@ const Store = {
         if (d.activeSetId) this.activeSetId = d.activeSetId;
       }
     } catch (e) { /* localStorage có thể bị chặn khi mở file:// — bỏ qua, dùng mặc định */ }
+    // Backfill các field mới cho dữ liệu cũ (tránh lỗi khi save cũ chưa có map/moveSpeed)
+    if (!this.balance.map) this.balance.map = clone(DEFAULT_BALANCE.map);
+    if (this.balance.player.moveSpeed == null) this.balance.player.moveSpeed = DEFAULT_BALANCE.player.moveSpeed;
   },
 
   // Lưu xuống localStorage
@@ -119,6 +122,7 @@ function makeEnemyStats(typeKey, elapsed) {
   const spMul = Math.min(d.speedCap, 1 + step * d.speedGrowthPerStep);
   return {
     type: typeKey, shape: t.shape, color: t.color, radius: t.radius, score: t.score,
+    cell: t.cell,            // có giá trị với khối tetromino (px/ô); undefined với loại khác
     maxHp: Math.round(t.baseHp * hpMul),
     hp:    Math.round(t.baseHp * hpMul),
     speed: t.baseSpeed * spMul,
