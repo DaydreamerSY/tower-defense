@@ -35,12 +35,12 @@ function update(dt) {
     state.nextBossAt += Store.balance.miniboss.every;
   }
 
-  // Đạn bay
+  // Đạn bay (không còn giảm thời gian sống — đạn sống theo số lần nảy)
   for (const b of state.bullets) {
     b.px = b.x; b.py = b.y;             // lưu vị trí trước khi di chuyển (cho reflect chính xác)
-    b.x += b.vx * dt; b.y += b.vy * dt; b.life -= dt;
-    if (b.x < 0 || b.x > VW) { b.vx *= -1; b.x = Math.max(0, Math.min(VW, b.x)); }
-    if (b.y < 0 || b.y > VH) { b.vy *= -1; b.y = Math.max(0, Math.min(VH, b.y)); }
+    b.x += b.vx * dt; b.y += b.vy * dt;
+    if (b.x < 0 || b.x > VW) { b.vx *= -1; b.x = Math.max(0, Math.min(VW, b.x)); b.bounceCount++; }
+    if (b.y < 0 || b.y > VH) { b.vy *= -1; b.y = Math.max(0, Math.min(VH, b.y)); b.bounceCount++; }
     // Earth Prison: đạn nảy lại vào trong vòng (không bay ra ngoài)
     if (state.prison) {
       const pr = state.prison, dx = b.x - pr.x, dy = b.y - pr.y, d = Math.hypot(dx, dy);
@@ -48,8 +48,11 @@ function update(dt) {
         const nx = dx / d, ny = dy / d, dot = b.vx * nx + b.vy * ny;
         if (dot > 0) { b.vx -= 2 * dot * nx; b.vy -= 2 * dot * ny; }
         b.x = pr.x + nx * (pr.r - b.radius - 0.5); b.y = pr.y + ny * (pr.r - b.radius - 0.5);
+        b.bounceCount++;
       }
     }
+    // Chốt an toàn: đạn nảy quá nhiều mà không trúng ai -> tự dọn (tránh tồn đọng vô hạn)
+    if (b.bounceCount > 50) b.alive = false;
   }
 
   // Nảy đạn khỏi Tường Nảy (tính như 1 lần nảy, kích hiệu ứng on-bounce)
@@ -57,7 +60,7 @@ function update(dt) {
     for (const b of state.bullets) {
       if (b.bouncesLeft <= 0) continue;
       for (const wall of state.walls) {
-        if (bulletWallBounce(b, wall)) { onBounce(b, null); b.bouncesLeft--; b.hitSet.clear(); break; }
+        if (bulletWallBounce(b, wall)) { onBounce(b, null); b.bouncesLeft--; b.bounceCount++; b.hitSet.clear(); break; }
       }
     }
   }
@@ -218,7 +221,7 @@ function update(dt) {
             const slen = Math.min(ft.len * 0.5, 70);
             state.firezones.push({ x1: ex - ux * slen, y1: ey - uy * slen, x2: ex, y2: ey, r: ft.r, dps: ft.dps * fireDmgMul(), remaining: ft.duration });
           }
-          b.life = 0;
+          b.alive = false;
         } else {
           // Bụng đầy (hoặc enemy thường): nảy/xuyên bình thường, kích mọi hiệu ứng
           const inPrison = state.prison && Math.hypot(b.x - state.prison.x, b.y - state.prison.y) < state.prison.r;
@@ -226,22 +229,23 @@ function update(dt) {
           else if (b.bouncesLeft > 0 || inPrison) {  // trong Prison: nảy vô hạn
             onBounce(b, e); reflect(b, e);
             if (!inPrison) b.bouncesLeft--;
+            b.bounceCount++;
             b.hitSet.clear(); b.hitSet.add(e);
           }
-          else { b.life = 0; }
+          else { b.alive = false; } // hết lượt nảy -> đạn tắt
         }
         break;
       }
     }
   }
 
-  state.bullets = state.bullets.filter(b => b.life > 0);
+  state.bullets = state.bullets.filter(b => b.alive);
   state.enemies = state.enemies.filter(e => !e.dead);
   for (const p of state.particles) { p.x += p.vx * dt; p.y += p.vy * dt; p.life -= dt; }
   state.particles = state.particles.filter(p => p.life > 0);
 
-  // Lên cấp: dồn nhiều cấp nếu nhặt đủ EXP một lúc
-  while (state.exp >= state.expToNext) {
+  // Lên cấp: dồn nhiều cấp nếu nhặt đủ EXP một lúc (guard expToNext>0 tránh loop vô hạn)
+  while (state.expToNext > 0 && state.exp >= state.expToNext) {
     state.exp -= state.expToNext;
     state.level++;
     state.levelUps++;

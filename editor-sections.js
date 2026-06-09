@@ -24,7 +24,7 @@ function sectionBalance() {
   const pg = el('div', { class: 'grid' });
   [['fireCooldown','Hồi chiêu (s)',0.01],['bulletSpeed','Tốc độ đạn',10],['bulletDamage','Sát thương',1],
    ['bulletBounces','Số lần nảy',1],['bulletCount','Số viên/nhịp',1],['bulletSpread','Góc xòe (độ)',1],
-   ['bulletLifetime','TG sống đạn (s)',0.1],['bulletPierce','Xuyên',1]]
+   ['bulletPierce','Xuyên',1]]
     .forEach(([k,l,s]) => pg.appendChild(labeled(l, numField(p, k, s))));
   sec.appendChild(pg);
 

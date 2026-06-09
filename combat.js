@@ -51,7 +51,7 @@ function makeBullet(ang, speed, P) {
     vx: Math.cos(ang) * bspeed, vy: Math.sin(ang) * bspeed,
     radius: 6, damage,
     bouncesLeft: bounces, pierceLeft: pierce,
-    life: P.bulletLifetime, hitSet: new Set(),
+    alive: true, bounceCount: 0, hitSet: new Set(), // sống theo số lần nảy (không còn theo thời gian)
     elements, color: bulletColor(elements), noSplit: false,
     elecChain, elecDmg,
   };
@@ -267,7 +267,7 @@ function spawnSplit(b, e) {
       vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed,
       radius: 6, damage: b.damage,
       bouncesLeft: 0, pierceLeft: 0,
-      life: Math.min(b.life, 1.0), hitSet: new Set([e]),
+      alive: true, bounceCount: 0, hitSet: new Set([e]),
       elements: b.elements.slice(), color: b.color, noSplit: true,
       elecChain: 0, elecDmg: 0,
     });
@@ -295,7 +295,7 @@ function releaseBelly(e) {
       vx: Math.cos(ang) * speed, vy: Math.sin(ang) * speed,
       radius: stored.radius || 6, damage: stored.damage,
       bouncesLeft: P.bulletBounces, pierceLeft: 0,
-      life: P.bulletLifetime, hitSet: new Set(),
+      alive: true, bounceCount: 0, hitSet: new Set(),
       elements: stored.elements || [], color: stored.color, noSplit: true,
       elecChain: 0, elecDmg: 0,
     });

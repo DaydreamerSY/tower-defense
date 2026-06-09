@@ -1,5 +1,9 @@
 # Shuriken Prototype — Hướng dẫn nhanh
 
+## ⚠️ Thư mục làm việc
+- **Folder chính (DÙNG cái này)**: `/Users/khanhnl/Desktop/tower-defense/` — **là git repo** (remote: `github.com/DaydreamerSY/tower-defense`). Mọi chỉnh sửa làm ở đây.
+- **`/Users/khanhnl/Desktop/tower-defense-main/`**: bản tải ZIP cũ — **KHÔNG dùng nữa** (giữ làm backup, có thể xoá).
+
 Game **auto-shooter survival** (roguelike). Player đứng giữa màn, tự bắn enemy gần,
 né va chạm (chạm = thua), đủ **EXP** thì **lên cấp → chọn 1 trong 3 skill**. Enemy
 mạnh dần theo thời gian. Có 2 màn: **Play** và **Edit** (chỉnh balance/skill, lưu localStorage).

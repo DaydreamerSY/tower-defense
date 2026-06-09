@@ -27,7 +27,6 @@ const DEFAULT_BALANCE = {
     bulletBounces: 2,     // số lần nảy tối đa mỗi viên
     bulletCount: 1,       // số viên bắn mỗi nhịp
     bulletSpread: 0,      // góc xòe (độ) khi bắn nhiều viên
-    bulletLifetime: 2.5,  // giây trước khi viên đạn tự biến mất
     bulletPierce: 0,      // số enemy đạn xuyên nền (Wind1 cộng thêm)
   },
 
